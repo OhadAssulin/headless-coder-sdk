@@ -139,15 +139,17 @@ export class CodexAdapter implements HeadlessCoder {
     opts?: RunOpts,
   ): AsyncIterable<StreamEvent> {
     void opts;
-    const runStream = (await (thread.internal as CodexThread).runStreamed(
-      normalizeInput(input),
-    )) as unknown as AsyncIterable<any>;
+    const runStream = await (thread.internal as CodexThread).runStreamed(normalizeInput(input));
+    const asyncEvents = (runStream as any)?.events ?? runStream;
+    if (!asyncEvents || typeof (asyncEvents as any)[Symbol.asyncIterator] !== 'function') {
+      throw new Error('Codex streaming API did not return an async iterator.');
+    }
     yield {
       type: 'init',
       provider: 'codex',
       threadId: (thread.internal as CodexThread).id ?? undefined,
     };
-    for await (const event of runStream) {
+    for await (const event of asyncEvents as AsyncIterable<any>) {
       yield { type: 'progress', raw: event };
     }
     yield { type: 'done' };
