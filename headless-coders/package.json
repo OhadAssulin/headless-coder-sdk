@@ -1,0 +1,19 @@
+{
+  "name": "headless-coders-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r exec pnpm run build",
+    "lint": "eslint .",
+    "test": "pnpm -r exec pnpm test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "packageManager": "pnpm@8.15.5"
+}
+

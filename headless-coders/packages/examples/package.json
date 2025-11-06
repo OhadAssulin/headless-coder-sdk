@@ -1,0 +1,21 @@
+{
+  "name": "@headless-coders/examples",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "main": "dist/basic.js",
+  "types": "dist/basic.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@headless-coders/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
+
