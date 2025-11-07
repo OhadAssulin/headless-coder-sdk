@@ -223,7 +223,7 @@ export class ClaudeAdapter implements HeadlessCoder {
       }
     }
     if (!sawDone) {
-      yield { type: 'done', provider: 'claude', raw: { reason: 'completed' }, ts: now() };
+      yield { type: 'done', provider: 'claude', ts: now(), originalItem: { reason: 'completed' } };
     }
   }
 
@@ -244,102 +244,129 @@ export class ClaudeAdapter implements HeadlessCoder {
 function normalizeClaudeStreamMessage(message: any, threadId?: string): CoderStreamEvent[] {
   const ts = now();
   const provider: Provider = 'claude';
-  const typeRaw = (message?.type ?? '').toString().toLowerCase();
   const events: CoderStreamEvent[] = [];
+  const typeValue = message?.type ?? message?.label ?? '';
+  const typeText = typeof typeValue === 'string' ? typeValue : String(typeValue ?? '');
+  const typeLower = typeText.toLowerCase();
+  const includes = (token: string) => typeLower.includes(token);
 
-  if (typeRaw.includes('system') || typeRaw.includes('session')) {
-    events.push({
-      type: 'init',
-      provider,
-      threadId: message.session_id ?? threadId,
-      raw: message,
-      ts,
-    });
-    return events;
-  }
-
-  if (typeRaw.includes('partial')) {
-    events.push({
-      type: 'message',
-      provider,
-      role: 'assistant',
-      text: (message as any).text ?? (message as any).content,
-      delta: true,
-      raw: message,
-      ts,
-    });
-    return events;
-  }
-
-  if (typeRaw.includes('assistant')) {
-    events.push({
-      type: 'message',
-      provider,
-      role: 'assistant',
-      text: extractClaudeAssistantText(message),
-      raw: message,
-      ts,
-    });
-    return events;
-  }
-
-  if (typeRaw.includes('tool_use')) {
-    events.push({
-      type: 'tool_use',
-      provider,
-      name: (message as any).tool_name ?? (message as any).tool,
-      callId: (message as any).id,
-      args: (message as any).input,
-      raw: message,
-      ts,
-    });
-    return events;
-  }
-
-  if (typeRaw.includes('tool-result')) {
-    events.push({
-      type: 'tool_result',
-      provider,
-      name: (message as any).tool_name ?? (message as any).tool,
-      callId: (message as any).tool_use_id ?? (message as any).id,
-      result: (message as any).output,
-      raw: message,
-      ts,
-    });
-    return events;
-  }
-
-  if (typeRaw.includes('permission')) {
-    events.push({ type: 'permission', provider, raw: message, ts });
-    return events;
-  }
-
-  if (typeRaw.includes('result')) {
-    if (claudeResultIndicatesError(message)) {
-      events.push({
-        type: 'error',
+  if (typeLower === 'sdkinit' || typeLower === 'system' || message?.session_id) {
+    return [
+      {
+        type: 'init',
         provider,
-        message: buildClaudeResultErrorMessage(message),
-        raw: message,
+        threadId: message?.session_id ?? threadId,
+        model: message?.model,
         ts,
-      });
-    } else {
-      if (message.usage) {
-        events.push({ type: 'usage', provider, stats: message.usage, raw: message, ts });
-      }
-      events.push({ type: 'done', provider, raw: message, ts });
+        originalItem: message,
+      },
+    ];
+  }
+
+  if (includes('partial')) {
+    return [
+      {
+        type: 'message',
+        provider,
+        role: 'assistant',
+        text: (message as any).text ?? (message as any).content ?? extractClaudeAssistantText(message),
+        delta: true,
+        ts,
+        originalItem: message,
+      },
+    ];
+  }
+
+  if (includes('assistant')) {
+    return [
+      {
+        type: 'message',
+        provider,
+        role: 'assistant',
+        text: extractClaudeAssistantText(message),
+        ts,
+        originalItem: message,
+      },
+    ];
+  }
+
+  if (includes('tool_use') || includes('tooluse')) {
+    return [
+      {
+        type: 'tool_use',
+        provider,
+        name: (message as any).name ?? (message as any).tool_name ?? (message as any).tool,
+        callId: (message as any).id,
+        args: (message as any).input,
+        ts,
+        originalItem: message,
+      },
+    ];
+  }
+
+  if (includes('tool-result') || includes('toolresult')) {
+    return [
+      {
+        type: 'tool_result',
+        provider,
+        name: (message as any).name ?? (message as any).tool_name ?? (message as any).tool,
+        callId: (message as any).tool_use_id ?? (message as any).id,
+        result: (message as any).output,
+        ts,
+        originalItem: message,
+      },
+    ];
+  }
+
+  if (includes('permission')) {
+    return [
+      {
+        type: 'permission',
+        provider,
+        request: (message as any).request,
+        decision: (message as any).decision,
+        ts,
+        originalItem: message,
+      },
+    ];
+  }
+
+  if (includes('result')) {
+    if (claudeResultIndicatesError(message)) {
+      return [
+        {
+          type: 'error',
+          provider,
+          message: buildClaudeResultErrorMessage(message),
+          ts,
+          originalItem: message,
+        },
+      ];
     }
+    if (message?.usage) {
+      events.push({ type: 'usage', provider, stats: message.usage, ts, originalItem: message });
+    }
+    events.push({ type: 'done', provider, ts, originalItem: message });
     return events;
   }
 
-  events.push({
-    type: 'progress',
-    provider,
-    label: typeRaw || 'claude.event',
-    raw: message,
-    ts,
-  });
-  return events;
+  if (includes('completed') || includes('final')) {
+    if (message?.usage) {
+      events.push({ type: 'usage', provider, stats: message.usage, ts, originalItem: message });
+    }
+    events.push({ type: 'done', provider, ts, originalItem: message });
+    return events;
+  }
+
+  return [
+    {
+      type: 'progress',
+      provider,
+      label: typeText || 'claude.event',
+      ts,
+      originalItem: message,
+    },
+  ];
 }
 
 function extractClaudeAssistantText(message: any): string {

@@ -247,78 +247,84 @@ export class GeminiAdapter implements HeadlessCoder {
 function normalizeGeminiEvent(event: any): CoderStreamEvent[] {
   const ts = now();
   const provider: Provider = 'gemini';
-  const type = event?.type;
-  const normalized: CoderStreamEvent[] = [];
+  const ev = event ?? {};
 
-  switch (type) {
+  switch (ev.type) {
     case 'init':
-      normalized.push({
-        type: 'init',
-        provider,
-        threadId: event.session_id,
-        model: event.model,
-        raw: event,
-        ts,
-      });
-      return normalized;
+      return [
+        {
+          type: 'init',
+          provider,
+          threadId: ev.session_id,
+          model: ev.model,
+          ts,
+          originalItem: ev,
+        },
+      ];
     case 'message':
-      normalized.push({
-        type: 'message',
-        provider,
-        role: event.role ?? 'assistant',
-        text: event.content,
-        delta: !!event.delta,
-        raw: event,
-        ts,
-      });
-      return normalized;
+      return [
+        {
+          type: 'message',
+          provider,
+          role: ev.role ?? 'assistant',
+          text: ev.content,
+          delta: !!ev.delta,
+          ts,
+          originalItem: ev,
+        },
+      ];
     case 'tool_use':
-      normalized.push({
-        type: 'tool_use',
-        provider,
-        name: event.tool_name ?? 'tool',
-        callId: event.call_id,
-        args: event.args,
-        raw: event,
-        ts,
-      });
-      return normalized;
+      return [
+        {
+          type: 'tool_use',
+          provider,
+          name: ev.tool_name ?? 'tool',
+          callId: ev.call_id,
+          args: ev.args,
+          ts,
+          originalItem: ev,
+        },
+      ];
     case 'tool_result':
-      normalized.push({
-        type: 'tool_result',
-        provider,
-        name: event.tool_name ?? 'tool',
-        callId: event.call_id,
-        result: event.result,
-        exitCode: event.exit_code ?? null,
-        raw: event,
-        ts,
-      });
-      return normalized;
+      return [
+        {
+          type: 'tool_result',
+          provider,
+          name: ev.tool_name ?? 'tool',
+          callId: ev.call_id,
+          result: ev.result,
+          exitCode: ev.exit_code ?? null,
+          ts,
+          originalItem: ev,
+        },
+      ];
     case 'error':
-      normalized.push({
-        type: 'error',
-        provider,
-        message: event.message ?? 'gemini error',
-        raw: event,
-        ts,
-      });
-      return normalized;
+      return [
+        {
+          type: 'error',
+          provider,
+          message: ev.message ?? 'gemini error',
+          ts,
+          originalItem: ev,
+        },
+      ];
     case 'result': {
-      if (event.stats) {
-        normalized.push({ type: 'usage', provider, stats: event.stats, raw: event, ts });
+      const out: CoderStreamEvent[] = [];
+      if (ev.stats) {
+        out.push({ type: 'usage', provider, stats: ev.stats, ts, originalItem: ev });
       }
-      normalized.push({ type: 'done', provider, raw: event, ts });
-      return normalized;
+      out.push({ type: 'done', provider, ts, originalItem: ev });
+      return out;
     }
     default:
-      normalized.push({
-        type: 'progress',
-        provider,
-        label: typeof type === 'string' ? type : 'gemini.event',
-        raw: event,
-        ts,
-      });
-      return normalized;
+      return [
+        {
+          type: 'progress',
+          provider,
+          label: typeof ev.type === 'string' ? ev.type : 'gemini.event',
+          ts,
+          originalItem: ev,
+        },
+      ];
   }
 }

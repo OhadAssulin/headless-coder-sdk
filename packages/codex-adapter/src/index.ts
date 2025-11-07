@@ -190,81 +190,163 @@ export class CodexAdapter implements HeadlessCoder {
 function normalizeCodexEvent(event: any): CoderStreamEvent[] {
   const ts = now();
   const provider: Provider = 'codex';
-  const type = event?.type;
+  const ev = event ?? {};
+  const type = ev?.type;
   const normalized: CoderStreamEvent[] = [];
 
   if (type === 'thread.started') {
-    normalized.push({ type: 'init', provider, threadId: event.thread_id, raw: event, ts });
+    normalized.push({ type: 'init', provider, threadId: ev.thread_id, ts, originalItem: ev });
     return normalized;
   }
 
   if (type === 'turn.started') {
-    normalized.push({ type: 'progress', provider, label: 'turn.started', raw: event, ts });
-    return normalized;
-  }
-
-  if (type === 'item.started' && event.item?.type === 'command_execution') {
-    normalized.push({
-      type: 'tool_use',
-      provider,
-      name: 'command',
-      callId: event.item.id,
-      args: { command: event.item.command },
-      raw: event,
-      ts,
-    });
-    return normalized;
-  }
-
-  if (type === 'item.completed' && event.item?.type === 'command_execution') {
-    normalized.push({
-      type: 'tool_result',
-      provider,
-      name: 'command',
-      callId: event.item.id,
-      exitCode: event.item.exit_code ?? null,
-      result: event.item.aggregated_output ?? event.item.text,
-      raw: event,
-      ts,
-    });
-    return normalized;
-  }
-
-  if (type === 'item.delta' && event.item?.type === 'agent_message') {
-    normalized.push({
-      type: 'message',
-      provider,
-      role: 'assistant',
-      text: event.delta ?? event.item?.text,
-      delta: true,
-      raw: event,
-      ts,
-    });
-    return normalized;
-  }
-
-  if (type === 'item.completed' && event.item?.type === 'agent_message') {
-    normalized.push({
-      type: 'message',
-      provider,
-      role: 'assistant',
-      text: event.item.text,
-      raw: event,
-      ts,
-    });
+    normalized.push({ type: 'progress', provider, label: 'turn.started', ts, originalItem: ev });
     return normalized;
   }
 
   if (typeof type === 'string' && type.startsWith('permission.')) {
-    normalized.push({ type: 'permission', provider, raw: event, ts });
+    const decision = type.endsWith('granted') ? 'granted' : type.endsWith('denied') ? 'denied' : undefined;
+    normalized.push({
+      type: 'permission',
+      provider,
+      request: ev.permission ?? ev.request,
+      decision,
+      ts,
+      originalItem: ev,
+    });
+    return normalized;
+  }
+
+  if (type === 'item.delta') {
+    const item = ev.item ?? {};
+    if (item.type === 'agent_message') {
+      normalized.push({
+        type: 'message',
+        provider,
+        role: 'assistant',
+        text: ev.delta ?? item.text,
+        delta: true,
+        ts,
+        originalItem: ev,
+      });
+      return normalized;
+    }
+
+    normalized.push({
+      type: 'progress',
+      provider,
+      label: `item.delta:${item.type ?? 'event'}`,
+      detail: typeof ev.delta === 'string' ? ev.delta : undefined,
+      ts,
+      originalItem: ev,
+    });
+    return normalized;
+  }
+
+  if (type === 'item.started' || type === 'item.completed') {
+    const item = ev.item ?? {};
+    if (item.type === 'agent_message') {
+      normalized.push({
+        type: 'message',
+        provider,
+        role: 'assistant',
+        text: item.text,
+        delta: type === 'item.started',
+        ts,
+        originalItem: ev,
+      });
+      return normalized;
+    }
+
+    if (item.type === 'reasoning') {
+      normalized.push({
+        type: 'progress',
+        provider,
+        label: 'reasoning',
+        detail: item.text,
+        ts,
+        originalItem: ev,
+      });
+      return normalized;
+    }
+
+    if (item.type === 'command_execution') {
+      if (type === 'item.started') {
+        normalized.push({
+          type: 'tool_use',
+          provider,
+          name: 'command',
+          callId: item.id,
+          args: { command: item.command },
+          ts,
+          originalItem: ev,
+        });
+      } else {
+        normalized.push({
+          type: 'tool_result',
+          provider,
+          name: 'command',
+          callId: item.id,
+          result: item.aggregated_output ?? item.text,
+          exitCode: item.exit_code ?? null,
+          ts,
+          originalItem: ev,
+        });
+      }
+      return normalized;
+    }
+
+    if (item.type === 'file_change') {
+      normalized.push({
+        type: 'file_change',
+        provider,
+        path: item.path,
+        op: item.op,
+        patch: item.patch,
+        ts,
+        originalItem: ev,
+      });
+      return normalized;
+    }
+
+    if (item.type === 'plan_update') {
+      normalized.push({
+        type: 'plan_update',
+        provider,
+        text: item.text,
+        ts,
+        originalItem: ev,
+      });
+      return normalized;
+    }
+
+    normalized.push({
+      type: 'progress',
+      provider,
+      label: item.type ?? 'item',
+      detail: item.text ?? '',
+      ts,
+      originalItem: ev,
+    });
     return normalized;
   }
 
   if (type === 'turn.completed') {
-    if (event.usage) {
-      normalized.push({ type: 'usage', provider, stats: event.usage, raw: event, ts });
+    if (ev.usage) {
+      normalized.push({ type: 'usage', provider, stats: ev.usage, ts, originalItem: ev });
     }
-    normalized.push({ type: 'done', provider, raw: event, ts });
+    normalized.push({ type: 'done', provider, ts, originalItem: ev });
+    return normalized;
+  }
+
+  if (type === 'error') {
+    normalized.push({
+      type: 'error',
+      provider,
+      message: ev.message ?? 'codex error',
+      ts,
+      originalItem: ev,
+    });
     return normalized;
   }
 
@@ -272,8 +354,8 @@ function normalizeCodexEvent(event: any): CoderStreamEvent[] {
     type: 'progress',
     provider,
     label: typeof type === 'string' ? type : 'codex.event',
-    raw: event,
     ts,
+    originalItem: ev,
   });
   return normalized;
 }

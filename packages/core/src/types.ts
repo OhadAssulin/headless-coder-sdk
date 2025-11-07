@@ -14,7 +14,7 @@ export const CODER_TYPES = {
 /**
  * Provider discriminant used for selecting a headless coder implementation.
  */
-export type Provider = (typeof CODER_TYPES)[keyof typeof CODER_TYPES];
+export type Provider = 'codex' | 'gemini' | 'claude';
 
 /**
  * Alias exposed for developer ergonomics when referring to provider identifiers.
@@ -71,15 +71,15 @@ export interface ThreadHandle {
  * Streaming events emitted by adapters during live runs.
  */
 export type CoderStreamEvent =
-  | { type: 'init'; provider: Provider; threadId?: string; model?: string; raw?: any; ts: number }
+  | { type: 'init'; provider: Provider; threadId?: string; model?: string; ts: number; originalItem?: any }
   | {
       type: 'message';
       provider: Provider;
       role: 'assistant' | 'user' | 'system';
       text?: string;
       delta?: boolean;
-      raw?: any;
       ts: number;
+      originalItem?: any;
     }
   | {
       type: 'tool_use';
@@ -87,8 +87,8 @@ export type CoderStreamEvent =
       name: string;
       callId?: string;
       args?: any;
-      raw?: any;
       ts: number;
+      originalItem?: any;
     }
   | {
       type: 'tool_result';
@@ -97,46 +97,57 @@ export type CoderStreamEvent =
       callId?: string;
       result?: any;
       exitCode?: number | null;
-      raw?: any;
       ts: number;
+      originalItem?: any;
     }
   | {
       type: 'progress';
       provider: Provider;
       label?: string;
       detail?: string;
-      raw?: any;
       ts: number;
+      originalItem?: any;
     }
   | {
       type: 'permission';
       provider: Provider;
       request?: any;
       decision?: 'granted' | 'denied' | 'auto';
-      raw?: any;
       ts: number;
+      originalItem?: any;
+    }
+  | {
+      type: 'file_change';
+      provider: Provider;
+      path?: string;
+      op?: 'create' | 'modify' | 'delete' | 'rename';
+      patch?: string;
+      ts: number;
+      originalItem?: any;
+    }
+  | {
+      type: 'plan_update';
+      provider: Provider;
+      text?: string;
+      ts: number;
+      originalItem?: any;
     }
   | {
       type: 'usage';
       provider: Provider;
       stats?: { inputTokens?: number; outputTokens?: number; [k: string]: any };
-      raw?: any;
       ts: number;
+      originalItem?: any;
     }
   | {
       type: 'error';
       provider: Provider;
       code?: string;
       message: string;
-      raw?: any;
       ts: number;
+      originalItem?: any;
     }
-  | {
-      type: 'done';
-      provider: Provider;
-      raw?: any;
-      ts: number;
-    };
+  | { type: 'done'; provider: Provider; ts: number; originalItem?: any };
 
 export type EventIterator = AsyncIterable<CoderStreamEvent>;
 
