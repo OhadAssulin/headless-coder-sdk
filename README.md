@@ -10,6 +10,12 @@ This workspace hosts the shared headless coder abstraction together with provide
 - `@headless-coders/gemini-adapter` – Adapter invoking the Gemini CLI in headless mode.
 - `@headless-coders/examples` – Sample usage scripts demonstrating runtime wiring.
 
+## Adapter Event Mappings
+
+- [Codex stream mapping](packages/codex-adapter/MAPPING.md)
+- [Claude stream mapping](packages/claude-adapter/MAPPING.md)
+- [Gemini stream mapping](packages/gemini-adapter/MAPPING.md)
+
 ## Basic Usage
 
 ```ts
