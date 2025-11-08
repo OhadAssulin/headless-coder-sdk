@@ -463,7 +463,7 @@ export class CodexAdapter implements HeadlessCoder {
         if (!active.child.killed) {
           active.child.kill('SIGKILL');
         }
-      }, HARD_KILL_TIMEOUT_MS);
+      }, HARD_KILL_DELAY_MS);
     }
   }
 
