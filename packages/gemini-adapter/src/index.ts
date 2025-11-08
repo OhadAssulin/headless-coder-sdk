@@ -248,18 +248,16 @@ export class GeminiAdapter implements HeadlessCoder {
     };
     rl.on('line', handleLine);
     const handleClose = () => {
-      if (finished) return;
+      if (finished || !active.aborted) return;
       finished = true;
-      if (active.aborted) {
-        const reason = active.abortReason ?? 'Interrupted';
-        push({
-          type: 'cancelled',
-          provider: CODER_NAME,
-          ts: now(),
-          originalItem: { reason },
-        });
-        push(interruptedErrorEvent(reason));
-      }
+      const reason = active.abortReason ?? 'Interrupted';
+      push({
+        type: 'cancelled',
+        provider: CODER_NAME,
+        ts: now(),
+        originalItem: { reason },
+      });
+      push(interruptedErrorEvent(reason));
       push(DONE);
     };
     rl.once('close', handleClose);
