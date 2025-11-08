@@ -2,9 +2,16 @@
 
 ## Findings
 
+## Review #1 Findings (addressed)
+
 1. **Gemini stream close handler swallows CLI exit failures (packages/gemini-adapter/src/index.ts:250-285)**  
-   The new `handleClose` marks the stream as `finished` and enqueues `DONE` as soon as `readline` closes. Because the `child.once('exit', …)` handler bails out when `finished` is set, any subsequent non-zero exit status (or signal) is never surfaced to the iterator. As a result, Gemini CLI crashes now look like successful completions: consumers get `DONE` with no `error`, and the underlying process may continue running until the cleanup logic eventually sends SIGTERM. Please defer setting `finished` until the `exit` event runs (or forward the exit status through the close handler) so that we still emit the `Error` event when the CLI fails.
+   The original `handleClose` marked the stream as `finished` immediately, preventing the `exit` handler from reporting non-zero exit codes or signals. Consumers therefore saw `DONE` with no error even when the CLI crashed. The fix should defer `finished` until the `exit` event runs (or only short-circuit when an abort is already in progress) so worker failures still surface errors.
 
 2. **Codex adapter mislabels worker crashes as user cancellations (packages/codex-adapter/src/index.ts:373-399)**  
-   The worker exit handler now emits `createCancelledEvent(...)` for every unexpected exit path (signal, exit code 0 without `streamDone`, and non-zero exit codes) before pushing the error event. This means front-ends will always see a `cancelled` event even when the worker crashed or timed out, making it impossible to distinguish real user-initiated interrupts from infrastructure failures. Only emit the `cancelled` event when `active.aborted` is true; for other exit paths, emit the error event (and possibly `done`) without asserting `cancelled`.
+   The worker exit handler emitted `createCancelledEvent(...)` for every unexpected exit path, making crashes indistinguishable from user cancellations. The adapter should only emit `cancelled` when `active.aborted` is true; other exits must emit the worker-exit error event without cancellation metadata.
 
+Both findings have since been resolved in subsequent commits.
+
+## Review #2 Findings (current)
+
+No additional blocking issues were identified when re-reviewing `feature/interrupt-support` against `main`. The earlier Gemini and Codex regressions were fixed, and no new regressions or design gaps were observed in the remaining diffs (README/docs updates, new interrupt tests, and adapter refactors). Keep an eye on end-to-end CI once Codex worker changes roll out, but no corrective action is required from this review.
