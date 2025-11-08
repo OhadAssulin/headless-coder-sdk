@@ -222,3 +222,7 @@ if (Array.isArray(reviewIssues) && reviewIssues.length > 0) {
 - Run workspace builds: `npm run build` or `pnpm run build`
 - Execute tests across packages: `npm run test` or `pnpm run test`
 - Execute the end-to-end examples suite: `npm run test -- --workspace @headless-coder-sdk/examples-tests`
+
+## Build Your Own Adapter
+
+Want to add another provider? Follow the [Create Your Own Adapter guide](docs/create-your-own-adapter.md) for a step-by-step walkthrough covering exports, registry usage, and testing tips.
