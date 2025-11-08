@@ -152,7 +152,90 @@ console.log(followUp.text);
 
 ## 🔄 Multi-Provider Workflow
 
-For a full multi-coder workflow (Codex + Claude + Gemini), see [examples/multi-provider.ts](packages/examples/src/multi-provider.ts).
+```ts
+import {
+  registerAdapter,
+  createCoder,
+} from '@headless-coder-sdk/core/factory';
+import {
+  CODER_NAME as CODEX,
+  createAdapter as createCodex,
+} from '@headless-coder-sdk/codex-adapter';
+import {
+  CODER_NAME as CLAUDE,
+  createAdapter as createClaude,
+} from '@headless-coder-sdk/claude-adapter';
+import {
+  CODER_NAME as GEMINI,
+  createAdapter as createGemini,
+} from '@headless-coder-sdk/gemini-adapter';
+
+registerAdapter(CODEX, createCodex);
+registerAdapter(CLAUDE, createClaude);
+registerAdapter(GEMINI, createGemini);
+
+// 1) Claude + Codex perform code review concurrently and emit structured findings.
+const reviewSchema = {
+  type: 'object',
+  properties: {
+    issues: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          file: { type: 'string' },
+          description: { type: 'string' },
+          severity: { type: 'string', enum: ['high', 'medium', 'low'] },
+        },
+        required: ['file', 'description', 'severity'],
+      },
+    },
+  },
+  required: ['issues'],
+} as const;
+
+async function runMultiProviderReview(commitHash: string) {
+  const [claude, codex] = [createCoder(CLAUDE), createCoder(CODEX)];
+  const [claudeThread, codexThread] = await Promise.all([
+    claude.startThread(),
+    codex.startThread(),
+  ]);
+
+  const reviewPrompt = (name: string) =>
+    `Review commit ${commitHash} and provide structured findings as ${name}. Focus on regressions, tests, and security.`;
+
+  const [claudeReview, codexReview] = await Promise.all([
+    claudeThread.run(reviewPrompt('Claude'), { outputSchema: reviewSchema }),
+    codexThread.run(reviewPrompt('Codex'), { outputSchema: reviewSchema }),
+  ]);
+
+  const combinedIssues = [
+    ...(claudeReview.json?.issues ?? []),
+    ...(codexReview.json?.issues ?? []),
+  ];
+
+  // 2) Gemini waits for both reviewers, then fixes each issue sequentially.
+  const gemini = createCoder(GEMINI, { workingDirectory: process.cwd() });
+  const geminiThread = await gemini.startThread();
+
+  for (const issue of combinedIssues) {
+    await geminiThread.run([
+      {
+        role: 'system',
+        content: 'You fix code review issues one at a time. Apply patches directly when possible.',
+      },
+      {
+        role: 'user',
+        content: `Commit: ${commitHash}\nFile: ${issue.file}\nSeverity: ${issue.severity}\nIssue: ${issue.description}\nPlease fix this issue and describe the change.`,
+      },
+    ]);
+  }
+
+  await Promise.all([claude.close?.(claudeThread), codex.close?.(codexThread), gemini.close?.(geminiThread)]);
+}
+```
+
+In this workflow two reviewers (Claude, Codex) analyze the same commit in parallel and emit structured findings. Gemini then waits until both reviews finish and applies fixes issue-by-issue using the shared structured payload.
 
 ---
 
