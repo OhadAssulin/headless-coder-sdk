@@ -15,6 +15,7 @@ import { JSDOM } from 'jsdom';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CODEX_CODER_NAME } from '@headless-coder-sdk/codex-adapter';
 import type { PromptInput } from '@headless-coder-sdk/core/types';
+import { ensureAdaptersRegistered } from './register-adapters';
 
 const TARGET_DIR = '/tmp/headless-coder-sdk/test';
 
@@ -83,6 +84,8 @@ function buildCalculatorPrompt(targetDir: string): PromptInput {
  * Raises:
  *   Error: When Codex generation fails or the resulting calculator behaves incorrectly.
  */
+ensureAdaptersRegistered();
+
 async function runCalculatorScenario(t: TestContext): Promise<void> {
   await prepareWorkspace(TARGET_DIR);
 

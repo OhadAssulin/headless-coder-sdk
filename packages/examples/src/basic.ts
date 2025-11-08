@@ -4,11 +4,30 @@
 
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
-import { createCoder } from '@headless-coder-sdk/core/factory';
+import { createCoder, registerAdapter } from '@headless-coder-sdk/core/factory';
 import type { Provider, PromptInput } from '@headless-coder-sdk/core/types';
-import { CODER_NAME as CODEX_CODER_NAME } from '@headless-coder-sdk/codex-adapter';
-import { CODER_NAME as CLAUDE_CODER_NAME } from '@headless-coder-sdk/claude-adapter';
-import { CODER_NAME as GEMINI_CODER_NAME } from '@headless-coder-sdk/gemini-adapter';
+import {
+  CODER_NAME as CODEX_CODER_NAME,
+  createAdapter as createCodexAdapter,
+} from '@headless-coder-sdk/codex-adapter';
+import {
+  CODER_NAME as CLAUDE_CODER_NAME,
+  createAdapter as createClaudeAdapter,
+} from '@headless-coder-sdk/claude-adapter';
+import {
+  CODER_NAME as GEMINI_CODER_NAME,
+  createAdapter as createGeminiAdapter,
+} from '@headless-coder-sdk/gemini-adapter';
+
+let adaptersRegistered = false;
+
+function ensureAdaptersRegistered(): void {
+  if (adaptersRegistered) return;
+  registerAdapter(CODEX_CODER_NAME, createCodexAdapter);
+  registerAdapter(CLAUDE_CODER_NAME, createClaudeAdapter);
+  registerAdapter(GEMINI_CODER_NAME, createGeminiAdapter);
+  adaptersRegistered = true;
+}
 
 const SUPPORTED_PROVIDERS: Provider[] = [
   CODEX_CODER_NAME,
@@ -50,6 +69,7 @@ function parseArgs(argv: string[]): [Provider, PromptInput] {
  */
 export async function main(argv: string[]): Promise<void> {
   const [provider, prompt] = parseArgs(argv);
+  ensureAdaptersRegistered();
   const coder = createCoder(provider, {
     workingDirectory: process.cwd(),
   });

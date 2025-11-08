@@ -13,6 +13,7 @@ import { JSDOM } from 'jsdom';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CLAUDE_CODER_NAME } from '@headless-coder-sdk/claude-adapter';
 import type { PromptInput } from '@headless-coder-sdk/core/types';
+import { ensureAdaptersRegistered } from './register-adapters';
 
 const WORKSPACE = process.env.CLAUDE_STREAM_WORKSPACE ?? '/tmp/headless-coder-sdk/test_claude_stream';
 const STREAM_FILE = 'stream.txt';
@@ -93,6 +94,8 @@ function buildPrompt(workspace: string): PromptInput {
 /**
  * Executes the streaming scenario for Claude and validates the generated calculator.
  */
+ensureAdaptersRegistered();
+
 async function runClaudeScenario(t: TestContext): Promise<void> {
   await ensureWorkspace(WORKSPACE);
   await loadClaudeEnvironment(WORKSPACE);

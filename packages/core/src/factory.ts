@@ -1,30 +1,50 @@
 /**
- * @fileoverview Factory helpers for creating headless-coder-sdk adapters.
+ * @fileoverview Adapter registry utilities for headless-coder-sdk.
  */
 
-import { CodexAdapter } from '@headless-coder-sdk/codex-adapter';
-import { ClaudeAdapter } from '@headless-coder-sdk/claude-adapter';
-import { GeminiAdapter } from '@headless-coder-sdk/gemini-adapter';
-import type { Provider, StartOpts, HeadlessCoderSdk } from './types.js';
+import type { AdapterFactory, AdapterName, HeadlessCoder, StartOpts } from './types.js';
+
+const registry = new Map<AdapterName, AdapterFactory>();
 
 /**
- * Creates a provider-specific headless-coder-sdk instance.
+ * Registers an adapter factory under the provided identifier.
  *
- * @param provider Provider identifier.
- * @param defaults Default start options injected into the adapter.
- * @returns Provider-specific `HeadlessCoderSdk` implementation.
+ * Calling this multiple times with the same name replaces the existing factory.
  */
-export function createCoder(provider: Provider, defaults?: StartOpts): HeadlessCoderSdk {
-  switch (provider) {
-    case 'codex':
-      return new CodexAdapter(defaults);
-    case 'claude':
-      return new ClaudeAdapter(defaults);
-    case 'gemini':
-      return new GeminiAdapter(defaults);
-    default: {
-      const exhaustiveCheck: never = provider;
-      throw new Error(`Unsupported provider: ${exhaustiveCheck}`);
-    }
+export function registerAdapter(name: AdapterName, factory: AdapterFactory): void {
+  registry.set(name, factory);
+}
+
+/**
+ * Removes a previously registered adapter factory.
+ */
+export function unregisterAdapter(name: AdapterName): void {
+  registry.delete(name);
+}
+
+/**
+ * Removes all registered adapters (primarily useful in tests).
+ */
+export function clearRegisteredAdapters(): void {
+  registry.clear();
+}
+
+/**
+ * Creates a headless coder instance using a registered adapter factory.
+ *
+ * @throws When no adapter is registered under the supplied name.
+ */
+export function createCoder(name: AdapterName, defaults?: StartOpts): HeadlessCoder {
+  const factory = registry.get(name);
+  if (!factory) {
+    throw new Error(`Adapter "${name}" not registered. Did you forget registerAdapter()?`);
   }
+  return factory(defaults);
+}
+
+/**
+ * Returns the adapter factory associated with the supplied name.
+ */
+export function getAdapterFactory(name: AdapterName): AdapterFactory | undefined {
+  return registry.get(name);
 }

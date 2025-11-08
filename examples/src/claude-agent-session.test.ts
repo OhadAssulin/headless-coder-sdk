@@ -14,6 +14,7 @@ import { JSDOM } from 'jsdom';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CLAUDE_CODER_NAME } from '@headless-coder-sdk/claude-adapter';
 import type { PromptInput, RunResult } from '@headless-coder-sdk/core/types';
+import { ensureAdaptersRegistered } from './register-adapters';
 
 const CLAUDE_WORKSPACE = process.env.CLAUDE_TEST_WORKSPACE ?? '/tmp/headless-coder-sdk/test_claude';
 const CLAUDE_TIMEOUT_MS = Number.parseInt(process.env.CLAUDE_TEST_TIMEOUT_MS ?? '', 10) || 180_000;
@@ -154,6 +155,8 @@ async function withinTimeout<T>(promise: Promise<T>, timeoutMs: number, message:
  * Raises:
  *   Error: When prerequisites are missing or Claude fails to respond.
  */
+ensureAdaptersRegistered();
+
 async function runClaudeScenario(t: TestContext): Promise<void> {
   await ensureWorkspace(CLAUDE_WORKSPACE);
   await loadClaudeEnvironment(CLAUDE_WORKSPACE);

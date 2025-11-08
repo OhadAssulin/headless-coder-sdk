@@ -1,12 +1,12 @@
 /**
- * @fileoverview Gemini CLI adapter integrating with the HeadlessCoderSdk contract.
+ * @fileoverview Gemini CLI adapter integrating with the HeadlessCoder contract.
  */
 
 import { spawn } from 'node:child_process';
 import * as readline from 'node:readline';
 import { now } from '@headless-coder-sdk/core';
 import type {
-  HeadlessCoderSdk,
+  HeadlessCoder,
   ThreadHandle,
   PromptInput,
   StartOpts,
@@ -18,6 +18,10 @@ import type {
 } from '@headless-coder-sdk/core';
 
 export const CODER_NAME: Provider = 'gemini';
+
+export function createAdapter(defaults?: StartOpts): HeadlessCoder {
+  return new GeminiAdapter(defaults);
+}
 
 const STRUCTURED_OUTPUT_SUFFIX =
   'Respond with JSON that matches the provided schema. Do not include explanatory text outside the JSON.';
@@ -79,7 +83,7 @@ function extractJsonPayload(text: string | undefined): unknown | undefined {
  * Args:
  *   defaultOpts: Default options used whenever callers omit overrides.
  */
-export class GeminiAdapter implements HeadlessCoderSdk {
+export class GeminiAdapter implements HeadlessCoder {
   /**
    * Creates a new Gemini adapter instance.
    *

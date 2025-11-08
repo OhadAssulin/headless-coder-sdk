@@ -11,6 +11,7 @@ import process from 'node:process';
 import { JSDOM } from 'jsdom';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CODEX_CODER_NAME } from '@headless-coder-sdk/codex-adapter';
+import { ensureAdaptersRegistered } from './register-adapters';
 import type { PromptInput } from '@headless-coder-sdk/core/types';
 
 const WORKSPACE = process.env.CODEX_STREAM_WORKSPACE ?? '/tmp/headless-coder-sdk/test_codex_stream';
@@ -39,6 +40,8 @@ function buildPrompt(workspace: string): PromptInput {
     { role: 'user', content: instructions },
   ];
 }
+
+ensureAdaptersRegistered();
 
 test('codex streams a sin/cos calculator', async () => {
   await rm(path.join(WORKSPACE, 'index.html'), { force: true });

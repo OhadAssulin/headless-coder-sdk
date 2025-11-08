@@ -19,8 +19,10 @@ Headless Coder SDK is an open-source framework that unifies multiple headless AI
 ## Basic Usage
 
 ```ts
-import { createCoder } from '@headless-coder-sdk/core/factory';
-import { CODER_NAME as CODEX_CODER } from '@headless-coder-sdk/codex-adapter';
+import { registerAdapter, createCoder } from '@headless-coder-sdk/core/factory';
+import { CODER_NAME as CODEX_CODER, createAdapter as createCodexAdapter } from '@headless-coder-sdk/codex-adapter';
+
+registerAdapter(CODEX_CODER, createCodexAdapter);
 
 const coder = createCoder(CODEX_CODER, { workingDirectory: process.cwd() });
 const thread = await coder.startThread();
@@ -31,8 +33,10 @@ console.log(result.text);
 ## Streaming Example (Claude)
 
 ```ts
-import { createCoder } from '@headless-coder-sdk/core/factory';
-import { CODER_NAME as CLAUDE_CODER } from '@headless-coder-sdk/claude-adapter';
+import { registerAdapter, createCoder } from '@headless-coder-sdk/core/factory';
+import { CODER_NAME as CLAUDE_CODER, createAdapter as createClaudeAdapter } from '@headless-coder-sdk/claude-adapter';
+
+registerAdapter(CLAUDE_CODER, createClaudeAdapter);
 
 const claude = createCoder(CLAUDE_CODER, {
   workingDirectory: process.cwd(),
@@ -54,8 +58,10 @@ console.log(followUp.text);
 ## Structured Output Example (Gemini)
 
 ```ts
-import { createCoder } from '@headless-coder-sdk/core/factory';
-import { CODER_NAME as GEMINI_CODER } from '@headless-coder-sdk/gemini-adapter';
+import { registerAdapter, createCoder } from '@headless-coder-sdk/core/factory';
+import { CODER_NAME as GEMINI_CODER, createAdapter as createGeminiAdapter } from '@headless-coder-sdk/gemini-adapter';
+
+registerAdapter(GEMINI_CODER, createGeminiAdapter);
 
 const gemini = createCoder(GEMINI_CODER, {
   workingDirectory: process.cwd(),
@@ -89,8 +95,10 @@ console.log(turn.json); // Parsed object based on the schema above
 ## Resume Example (Codex)
 
 ```ts
-import { createCoder } from '@headless-coder-sdk/core/factory';
-import { CODER_NAME as CODEX_CODER } from '@headless-coder-sdk/codex-adapter';
+import { registerAdapter, createCoder } from '@headless-coder-sdk/core/factory';
+import { CODER_NAME as CODEX_CODER, createAdapter as createCodexAdapter } from '@headless-coder-sdk/codex-adapter';
+
+registerAdapter(CODEX_CODER, createCodexAdapter);
 
 const codex = createCoder(CODEX_CODER, {
   workingDirectory: process.cwd(),
@@ -110,10 +118,23 @@ console.log(followUp.text);
 ## Multi-Provider Workflow Example
 
 ```ts
-import { createCoder } from '@headless-coder-sdk/core/factory';
-import { CODER_NAME as CODEX_CODER } from '@headless-coder-sdk/codex-adapter';
-import { CODER_NAME as CLAUDE_CODER } from '@headless-coder-sdk/claude-adapter';
-import { CODER_NAME as GEMINI_CODER } from '@headless-coder-sdk/gemini-adapter';
+import { registerAdapter, createCoder } from '@headless-coder-sdk/core/factory';
+import {
+  CODER_NAME as CODEX_CODER,
+  createAdapter as createCodexAdapter,
+} from '@headless-coder-sdk/codex-adapter';
+import {
+  CODER_NAME as CLAUDE_CODER,
+  createAdapter as createClaudeAdapter,
+} from '@headless-coder-sdk/claude-adapter';
+import {
+  CODER_NAME as GEMINI_CODER,
+  createAdapter as createGeminiAdapter,
+} from '@headless-coder-sdk/gemini-adapter';
+
+registerAdapter(CODEX_CODER, createCodexAdapter);
+registerAdapter(CLAUDE_CODER, createClaudeAdapter);
+registerAdapter(GEMINI_CODER, createGeminiAdapter);
 
 const codex = createCoder(CODEX_CODER, {
   workingDirectory: process.cwd(),

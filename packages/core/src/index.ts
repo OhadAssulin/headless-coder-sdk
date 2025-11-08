@@ -3,4 +3,10 @@
  */
 
 export * from './types.js';
-export { createCoder } from './factory.js';
+export {
+  registerAdapter,
+  unregisterAdapter,
+  clearRegisteredAdapters,
+  getAdapterFactory,
+  createCoder,
+} from './factory.js';

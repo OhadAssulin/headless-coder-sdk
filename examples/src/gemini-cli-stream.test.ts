@@ -12,6 +12,7 @@ import { JSDOM } from 'jsdom';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as GEMINI_CODER_NAME } from '@headless-coder-sdk/gemini-adapter';
 import type { PromptInput } from '@headless-coder-sdk/core/types';
+import { ensureAdaptersRegistered } from './register-adapters';
 
 const WORKSPACE = process.env.GEMINI_STREAM_WORKSPACE ?? '/tmp/headless-coder-sdk/test_gemini_stream';
 const STREAM_FILE = 'stream.txt';
@@ -46,6 +47,8 @@ function isGeminiMissing(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? '');
   return /ENOENT|not found|command failed.*gemini/i.test(message);
 }
+
+ensureAdaptersRegistered();
 
 test('gemini streams a sin/cos calculator', async t => {
   await rm(path.join(WORKSPACE, 'index.html'), { force: true });

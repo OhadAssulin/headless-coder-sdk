@@ -6,6 +6,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CLAUDE_CODER_NAME } from '@headless-coder-sdk/claude-adapter';
+import { ensureAdaptersRegistered } from './register-adapters';
 
 const WORKSPACE = process.env.CLAUDE_STRUCTURED_WORKSPACE ?? '/tmp/headless-coder-sdk/test_claude_structured';
 const CONFIG_SOURCE = process.env.CLAUDE_STREAM_CONFIG_SOURCE ?? '/tmp/headless-coder-sdk/test_claude/.claude';
@@ -36,6 +37,8 @@ async function hydrateConfig(targetDir: string): Promise<void> {
   await rm(targetDir, { recursive: true, force: true }).catch(() => {});
   await cp(CONFIG_SOURCE, targetDir, { recursive: true });
 }
+
+ensureAdaptersRegistered();
 
 async function runClaudeStructured(t: TestContext): Promise<void> {
   const hasKey =

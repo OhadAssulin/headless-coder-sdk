@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import process from 'node:process';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as GEMINI_CODER_NAME } from '@headless-coder-sdk/gemini-adapter';
+import { ensureAdaptersRegistered } from './register-adapters';
 
 const WORKSPACE = process.env.GEMINI_STRUCTURED_WORKSPACE ?? process.cwd();
 
@@ -22,6 +23,8 @@ function isGeminiMissing(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? '');
   return /ENOENT|not found|command failed.*gemini/i.test(message);
 }
+
+ensureAdaptersRegistered();
 
 test('gemini returns structured output', async t => {
   const coder = createCoder(GEMINI_CODER_NAME, {

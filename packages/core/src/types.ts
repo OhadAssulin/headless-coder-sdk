@@ -3,18 +3,14 @@
  */
 
 /**
- * Canonical identifiers for the supported headless-coder-sdk providers.
- */
-export const CODER_TYPES = {
-  CODEX: 'codex',
-  CLAUDE_CODE: 'claude',
-  GEMINI: 'gemini',
-} as const;
-
-/**
  * Provider discriminant used for selecting a headless-coder-sdk implementation.
  */
 export type Provider = 'codex' | 'gemini' | 'claude';
+
+/**
+ * Adapter identifiers supplied by individual adapter packages.
+ */
+export type AdapterName = Provider | (string & {});
 
 /**
  * Alias exposed for developer ergonomics when referring to provider identifiers.
@@ -170,9 +166,11 @@ export interface RunResult {
 /**
  * Interface implemented by all headless-coder-sdk adapters.
  */
-export interface HeadlessCoderSdk {
+export interface HeadlessCoder {
   startThread(opts?: StartOpts): Promise<ThreadHandle>;
   resumeThread(threadId: string, opts?: StartOpts): Promise<ThreadHandle>;
   getThreadId(thread: ThreadHandle): string | undefined;
   close?(thread: ThreadHandle): Promise<void>;
 }
+
+export type AdapterFactory = (defaults?: StartOpts) => HeadlessCoder;

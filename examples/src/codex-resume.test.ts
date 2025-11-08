@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import process from 'node:process';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CODEX_CODER_NAME } from '@headless-coder-sdk/codex-adapter';
+import { ensureAdaptersRegistered } from './register-adapters';
+
+ensureAdaptersRegistered();
 
 test('codex resumes a conversation', async () => {
   const coder = createCoder(CODEX_CODER_NAME, {

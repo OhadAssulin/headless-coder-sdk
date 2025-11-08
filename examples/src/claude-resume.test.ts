@@ -6,6 +6,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CLAUDE_CODER_NAME } from '@headless-coder-sdk/claude-adapter';
+import { ensureAdaptersRegistered } from './register-adapters';
 
 const WORKSPACE = process.env.CLAUDE_RESUME_WORKSPACE ?? '/tmp/headless-coder-sdk/test_claude_resume';
 const CONFIG_SOURCE = process.env.CLAUDE_STREAM_CONFIG_SOURCE ?? '/tmp/headless-coder-sdk/test_claude/.claude';
@@ -20,6 +21,8 @@ async function hydrateClaudeConfig(targetDir: string): Promise<void> {
   await mkdir(path.dirname(targetDir), { recursive: true });
   await cp(CONFIG_SOURCE, targetDir, { recursive: true });
 }
+
+ensureAdaptersRegistered();
 
 test('claude resumes a conversation', async t => {
   const hasKey =
