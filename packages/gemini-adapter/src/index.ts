@@ -614,12 +614,18 @@ function destroyChildStreams(child: ChildProcess): void {
   destroyReadable(child.stderr);
 }
 
+type DestroyableReadable = NodeJS.ReadableStream & {
+  destroyed?: boolean;
+  destroy?: () => void;
+};
+
 function destroyReadable(stream?: NodeJS.ReadableStream | null): void {
   if (!stream) return;
-  stream.removeAllListeners();
-  if (stream.destroyed) return;
+  const destroyable = stream as DestroyableReadable;
+  destroyable.removeAllListeners();
+  if (destroyable.destroyed) return;
   try {
-    stream.destroy();
+    destroyable.destroy?.();
   } catch {
     // ignore
   }

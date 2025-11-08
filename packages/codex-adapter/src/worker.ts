@@ -88,9 +88,12 @@ function emit(message: WorkerOutboundMessage): void {
 async function emitAndWait(message: WorkerOutboundMessage): Promise<void> {
   if (typeof process.send !== 'function') return;
   await new Promise<void>((resolve, reject) => {
-    process.send!(message, err => {
-      if (err) reject(err);
-      else resolve();
+    process.send!(message, undefined, undefined, (err: Error | null) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
     });
   });
 }

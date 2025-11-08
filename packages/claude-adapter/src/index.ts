@@ -2,7 +2,13 @@
  * @fileoverview Claude Agent SDK adapter implementing the HeadlessCoder interface.
  */
 
-import { query, type SDKMessage, type Options, type Query as ClaudeQuery } from '@anthropic-ai/claude-agent-sdk';
+import {
+  query,
+  type SDKMessage,
+  type Options,
+  type Query as ClaudeQuery,
+  type PermissionMode,
+} from '@anthropic-ai/claude-agent-sdk';
 import { randomUUID } from 'node:crypto';
 import { now } from '@headless-coder-sdk/core';
 import type {
@@ -152,6 +158,8 @@ export class ClaudeAdapter implements HeadlessCoder {
   private buildOptions(state: ClaudeThreadState, runOpts?: RunOpts): Options {
     const startOpts = state.opts ?? {};
     const resumeId = state.resume ? state.sessionId : undefined;
+    const permissionMode: PermissionMode | undefined =
+      (startOpts.permissionMode as PermissionMode | undefined) ?? (startOpts.yolo ? 'bypassPermissions' : undefined);
     return {
       cwd: startOpts.workingDirectory,
       allowedTools: startOpts.allowedTools,
@@ -161,7 +169,7 @@ export class ClaudeAdapter implements HeadlessCoder {
       forkSession: startOpts.forkSession,
       includePartialMessages: !!runOpts?.streamPartialMessages,
       model: startOpts.model,
-      permissionMode: startOpts.permissionMode ?? (startOpts.yolo ? 'bypassPermissions' : undefined),
+      permissionMode,
       permissionPromptToolName: startOpts.permissionPromptToolName,
     };
   }
@@ -184,8 +192,9 @@ export class ClaudeAdapter implements HeadlessCoder {
     const state = thread.internal as ClaudeThreadState;
     this.assertIdle(state);
     const structuredPrompt = applyOutputSchemaPrompt(toPrompt(input), runOpts?.outputSchema);
+    const prompt = toPrompt(structuredPrompt);
     const options = this.buildOptions(state, runOpts);
-    const generator = query({ prompt: structuredPrompt, options });
+    const generator = query({ prompt, options });
     const active = this.registerRun(state, generator, runOpts?.signal);
     let lastAssistant = '';
     let finalResult: any;
@@ -250,8 +259,9 @@ export class ClaudeAdapter implements HeadlessCoder {
     const state = thread.internal as ClaudeThreadState;
     this.assertIdle(state);
     const structuredPrompt = applyOutputSchemaPrompt(toPrompt(input), runOpts?.outputSchema);
+    const prompt = toPrompt(structuredPrompt);
     const options = this.buildOptions(state, runOpts);
-    const generator = query({ prompt: structuredPrompt, options });
+    const generator = query({ prompt, options });
     const adapter = this;
 
     return {
