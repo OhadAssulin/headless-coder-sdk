@@ -11,8 +11,7 @@ import { ensureAdaptersRegistered } from './register-adapters';
 const WORKSPACE = process.env.CLAUDE_INTERRUPT_WORKSPACE ?? '/tmp/headless-coder-sdk/test_claude_interrupt';
 const CONNECT_FOUR_PROMPT =
   'Program a web-based Connect Four game that tracks the winner and allows restarting without refreshing the page.';
-const CLAUDE_CONFIG_SOURCE =
-  process.env.CLAUDE_INTERRUPT_SOURCE ?? path.resolve(process.cwd(), '..', '.claude');
+const CLAUDE_CONFIG_SOURCE = process.env.CLAUDE_INTERRUPT_SOURCE;
 
 ensureAdaptersRegistered();
 
@@ -20,9 +19,14 @@ ensureAdaptersRegistered();
  * Verifies Claude streams provide cancellation metadata when interrupted.
  */
 test('claude run can be interrupted', async () => {
+  if (!CLAUDE_CONFIG_SOURCE) {
+    test.skip('CLAUDE_INTERRUPT_SOURCE env not set; skipping Claude interrupt test.');
+    return;
+  }
+
   await rm(WORKSPACE, { recursive: true, force: true });
   await mkdir(WORKSPACE, { recursive: true });
-  await prepareClaudeWorkspace(WORKSPACE);
+  await prepareClaudeWorkspace(WORKSPACE, CLAUDE_CONFIG_SOURCE);
 
   const coder = createCoder(CLAUDE_CODER, {
     workingDirectory: WORKSPACE,
@@ -63,10 +67,10 @@ test('claude run can be interrupted', async () => {
   assert.ok(sawCancelled || sawInterruptedError, 'expected Claude to emit cancellation metadata');
 });
 
-async function prepareClaudeWorkspace(workspace: string): Promise<void> {
+async function prepareClaudeWorkspace(workspace: string, sourceDir: string): Promise<void> {
   const configDir = path.join(workspace, '.claude');
   await rm(configDir, { recursive: true, force: true });
-  await cp(CLAUDE_CONFIG_SOURCE, configDir, { recursive: true });
+  await cp(sourceDir, configDir, { recursive: true });
   process.env.CLAUDE_CONFIG_DIR = configDir;
   await loadClaudeSettings(configDir);
 }
