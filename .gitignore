@@ -2,4 +2,4 @@ node_modules
 .next
 .sl
 .plan/
-!.plan/interrupt-plan.md
+packages/*/dist/
