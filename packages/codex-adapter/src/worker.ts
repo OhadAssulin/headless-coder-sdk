@@ -38,6 +38,7 @@ interface WorkerRunResult {
   result: {
     items: any[];
     finalResponse: string;
+    structured?: unknown;
     usage?: any;
   };
 }
@@ -47,6 +48,7 @@ interface SerializedError {
   stack?: string;
   name?: string;
   code?: string;
+  stderr?: string;
 }
 
 let abortRequested = false;
@@ -121,6 +123,7 @@ async function consumeEvents(thread: Thread, payload: WorkerRequest, emitEvents:
   const items: any[] = [];
   let finalResponse = '';
   let usage: any = undefined;
+  let structured: unknown = undefined;
   for await (const event of run.events) {
     if (abortRequested) {
       throw createAbortError(abortReason);
@@ -133,15 +136,24 @@ async function consumeEvents(thread: Thread, payload: WorkerRequest, emitEvents:
       if (event.item.type === 'agent_message' && typeof event.item.text === 'string') {
         finalResponse = event.item.text;
       }
+      if (structured === undefined) {
+        structured = extractStructuredFromItem(event.item);
+      }
     } else if (event.type === 'turn.completed') {
       usage = event.usage;
+      if (structured === undefined) {
+        structured = extractStructuredFromTurn(event);
+      }
     } else if (event.type === 'turn.failed') {
       const message = event.error?.message ?? 'Codex turn failed';
       const error = new Error(message);
       throw error;
     }
   }
-  return { items, finalResponse, usage };
+  if (payload.outputSchema && structured === undefined) {
+    structured = extractJsonPayload(finalResponse);
+  }
+  return { items, finalResponse, structured, usage };
 }
 
 async function handleWorkerError(error: unknown): Promise<void> {
@@ -166,9 +178,50 @@ function serializeError(error: unknown): SerializedError {
       stack: error.stack,
       name: error.name,
       code: (error as any).code,
+      stderr: (error as any).stderr,
     };
   }
   return { message: typeof error === 'string' ? error : 'Unknown error' };
+}
+
+function extractStructuredFromItem(item: any): unknown {
+  if (!item) return undefined;
+  return firstStructured([
+    item.output_json,
+    item.json,
+    item.output,
+    item.response_json,
+    item.structured,
+    item.data,
+  ]);
+}
+
+function extractStructuredFromTurn(event: any): unknown {
+  if (!event) return undefined;
+  return firstStructured([event.output_json, event.json, event.result, event.output, event.response_json]);
+}
+
+function firstStructured(candidates: unknown[]): unknown {
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object') {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+function extractJsonPayload(text: string | undefined): unknown | undefined {
+  if (!text) return undefined;
+  const fenced = text.match(/```json\s*([\s\S]+?)```/i);
+  const candidate = (fenced ? fenced[1] : text).trim();
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+  if (start === -1 || end === -1 || end < start) return undefined;
+  try {
+    return JSON.parse(candidate.slice(start, end + 1));
+  } catch {
+    return undefined;
+  }
 }
 
 function createAbortError(reason?: string): Error {

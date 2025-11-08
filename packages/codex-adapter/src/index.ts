@@ -23,6 +23,7 @@ const WORKER_PATH = fileURLToPath(new URL('./worker.js', import.meta.url));
 const SOFT_KILL_DELAY_MS = 250;
 const HARD_KILL_DELAY_MS = 1500;
 const DONE = Symbol('stream-done');
+const STDERR_BUFFER_LIMIT = 64 * 1024;
 
 export const CODER_NAME: Provider = 'codex';
 export function createAdapter(defaults?: StartOpts): HeadlessCoder {
@@ -61,6 +62,7 @@ interface WorkerRunPayload {
   result: {
     items: any[];
     finalResponse: string;
+    structured?: unknown;
     usage?: any;
   };
 }
@@ -70,6 +72,7 @@ interface SerializedError {
   stack?: string;
   name?: string;
   code?: string;
+  stderr?: string;
 }
 
 type WorkerMessage =
@@ -169,7 +172,8 @@ export class CodexAdapter implements HeadlessCoder {
   }
 
   private launchRunWorker(state: CodexThreadState, input: string, opts?: RunOpts) {
-    const child = fork(WORKER_PATH, { stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
+    const child = fork(WORKER_PATH, { stdio: ['inherit', 'inherit', 'pipe', 'ipc'] });
+    const stderr = collectChildStderr(child);
     const abortController = new AbortController();
     const stopExternal = linkSignal(opts?.signal, reason => {
       if (!abortController.signal.aborted) {
@@ -214,11 +218,11 @@ export class CodexAdapter implements HeadlessCoder {
             break;
           case 'aborted':
             detach();
-            reject(createAbortError(raw.reason));
+            reject(attachStderr(createAbortError(raw.reason), stderr.read()));
             break;
           case 'error':
             detach();
-            reject(deserializeError(raw.error));
+            reject(attachStderr(deserializeError(raw.error), stderr.read()));
             break;
         }
       });
@@ -226,19 +230,21 @@ export class CodexAdapter implements HeadlessCoder {
       child.once('exit', (code, signal) => {
         if (settled) return;
         detach();
+        const stderrOutput = stderr.read();
         if (active.aborted || signal) {
-          reject(createAbortError(active.abortReason));
+          const reason = active.abortReason ?? (signal ? `Worker exited via signal ${signal}` : undefined);
+          reject(attachStderr(createAbortError(reason), stderrOutput));
         } else if (code === 0) {
-          reject(new Error('Codex worker exited unexpectedly.'));
+          reject(createWorkerExitError('Codex worker exited before returning a result.', stderrOutput));
         } else {
-          reject(new Error(`Codex worker exited with code ${code}`));
+          reject(createWorkerExitError(`Codex worker exited with code ${code}`, stderrOutput));
         }
       });
 
       child.once('error', error => {
         if (settled) return;
         detach();
-        reject(error);
+        reject(attachStderr(error as Error, stderr.read()));
       });
 
       child.send({ type: 'run', payload: request });
@@ -250,6 +256,7 @@ export class CodexAdapter implements HeadlessCoder {
       }
       this.clearKillTimers(active);
       active.stopExternal();
+      stderr.cleanup();
       try {
         child.removeAllListeners();
       } catch {
@@ -269,7 +276,8 @@ export class CodexAdapter implements HeadlessCoder {
     input: string,
     opts?: RunOpts,
   ): EventIterator {
-    const child = fork(WORKER_PATH, { stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
+    const child = fork(WORKER_PATH, { stdio: ['inherit', 'inherit', 'pipe', 'ipc'] });
+    const stderr = collectChildStderr(child);
     const abortController = new AbortController();
     const stopExternal = linkSignal(opts?.signal, reason => {
       if (!abortController.signal.aborted) {
@@ -341,25 +349,20 @@ export class CodexAdapter implements HeadlessCoder {
         }
         case 'cancelled': {
           const reason = raw.reason ?? 'Interrupted';
-          push({
-            type: 'cancelled',
-            provider: CODER_NAME,
-            ts: now(),
-            originalItem: { reason },
-          });
+          push(createCancelledEvent(reason));
           push(createInterruptedErrorEvent(reason));
           finished = true;
           push(DONE);
           break;
         }
         case 'aborted': {
-          push(createAbortError(raw.reason));
+          push(attachStderr(createAbortError(raw.reason), stderr.read()));
           finished = true;
           push(DONE);
           break;
         }
         case 'error': {
-          push(deserializeError(raw.error));
+          push(attachStderr(deserializeError(raw.error), stderr.read()));
           finished = true;
           push(DONE);
           break;
@@ -367,33 +370,39 @@ export class CodexAdapter implements HeadlessCoder {
       }
     });
 
-    child.once('exit', code => {
+    child.once('exit', (code, signal) => {
       if (finished) return;
       finished = true;
+      const stderrOutput = stderr.read();
       if (active.aborted) {
         const reason = active.abortReason ?? 'Interrupted';
-        push({
-          type: 'cancelled',
-          provider: CODER_NAME,
-          ts: now(),
-          originalItem: { reason },
-        });
+        push(createCancelledEvent(reason, stderrOutput));
         push(createInterruptedErrorEvent(reason));
         push(DONE);
         return;
       }
-      if (code === 0) {
+      if (signal) {
+        const reason = `Codex worker exited via signal ${signal}`;
+        push(createCancelledEvent(reason, stderrOutput));
+        push(createWorkerExitErrorEvent(reason, stderrOutput));
         push(DONE);
-      } else {
-        push(new Error(`Codex worker exited with code ${code}`));
-        push(DONE);
+        return;
       }
+      if (code === 0) {
+        const reason = 'Codex worker exited before completing the stream.';
+        push(createCancelledEvent(reason, stderrOutput));
+        push(createWorkerExitErrorEvent(reason, stderrOutput));
+        push(DONE);
+        return;
+      }
+      push(createWorkerExitError(`Codex worker exited with code ${code}`, stderrOutput));
+      push(DONE);
     });
 
     child.once('error', error => {
       if (finished) return;
       finished = true;
-      push(error);
+      push(attachStderr(error as Error, stderr.read()));
       push(DONE);
     });
 
@@ -422,6 +431,7 @@ export class CodexAdapter implements HeadlessCoder {
           if (state.currentRun === active) {
             state.currentRun = null;
           }
+          stderr.cleanup();
           if (!child.killed && child.exitCode === null) {
             child.kill('SIGTERM');
           }
@@ -480,7 +490,8 @@ export class CodexAdapter implements HeadlessCoder {
 
   private mapRunResult(payload: WorkerRunPayload): RunResult {
     const finalResponse = payload.result.finalResponse ?? '';
-    const structured = extractJsonPayload(finalResponse);
+    const structured =
+      payload.result.structured === undefined ? extractJsonPayload(finalResponse) : payload.result.structured;
     return {
       threadId: payload.threadId,
       text: finalResponse || undefined,
@@ -676,6 +687,7 @@ function deserializeError(serialized: SerializedError): Error {
   if (serialized.stack) error.stack = serialized.stack;
   if (serialized.name) error.name = serialized.name;
   if (serialized.code) (error as any).code = serialized.code;
+  if (serialized.stderr) (error as any).stderr = serialized.stderr;
   return error;
 }
 
@@ -694,4 +706,80 @@ function reasonToString(reason: unknown): string | undefined {
   if (typeof reason === 'string') return reason;
   if (reason instanceof Error && reason.message) return reason.message;
   return undefined;
+}
+
+function collectChildStderr(child: ChildProcess, limit = STDERR_BUFFER_LIMIT): {
+  read(): string;
+  cleanup(): void;
+} {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  const onData = (chunk: Buffer | string) => {
+    if (size >= limit) return;
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    const remaining = limit - size;
+    if (buffer.length <= remaining) {
+      chunks.push(buffer);
+      size += buffer.length;
+    } else {
+      chunks.push(buffer.subarray(0, remaining));
+      size = limit;
+    }
+  };
+  child.stderr?.on('data', onData);
+  return {
+    read(): string {
+      if (!chunks.length) return '';
+      return Buffer.concat(chunks).toString('utf8').trim();
+    },
+    cleanup(): void {
+      if (!child.stderr) return;
+      child.stderr.removeListener('data', onData);
+    },
+  };
+}
+
+function attachStderr<T extends Error>(error: T, stderr: string | undefined): T {
+  if (stderr && !(error as any).stderr) {
+    (error as any).stderr = stderr;
+  }
+  return error;
+}
+
+function createWorkerExitError(message: string, stderr?: string): Error {
+  const formatted = formatWorkerExitMessage(message, stderr);
+  const error = new Error(formatted);
+  if (stderr) (error as any).stderr = stderr;
+  return error;
+}
+
+function createWorkerExitErrorEvent(message: string, stderr?: string): CoderStreamEvent {
+  const original: { reason: string; stderr?: string } = { reason: message };
+  if (stderr) original.stderr = stderr;
+  return {
+    type: 'error',
+    provider: CODER_NAME,
+    code: 'codex.worker_exit',
+    message,
+    ts: now(),
+    originalItem: original,
+  };
+}
+
+function createCancelledEvent(reason: string, stderr?: string): CoderStreamEvent {
+  const original: { reason: string; stderr?: string } = { reason };
+  if (stderr) original.stderr = stderr;
+  return {
+    type: 'cancelled',
+    provider: CODER_NAME,
+    ts: now(),
+    originalItem: original,
+  };
+}
+
+function formatWorkerExitMessage(base: string, stderr?: string): string {
+  if (!stderr) return base;
+  const trimmed = stderr.trim();
+  if (!trimmed) return base;
+  return `${base}: ${trimmed}`;
 }
