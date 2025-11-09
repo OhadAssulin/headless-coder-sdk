@@ -1,0 +1,21 @@
+{
+  "name": "acp-next",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 8000",
+    "build": "next build",
+    "start": "next start -p 8000"
+  },
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@i-am-bee/acp-sdk": "^0.3.0",
+    "@headless-coder-sdk/core": "workspace:*",
+    "@headless-coder-sdk/codex-adapter": "workspace:*",
+    "@headless-coder-sdk/claude-adapter": "workspace:*",
+    "@headless-coder-sdk/gemini-adapter": "workspace:*",
+    "ajv": "^8.17.1"
+  }
+}

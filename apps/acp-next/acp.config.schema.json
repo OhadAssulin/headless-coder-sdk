@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["enabledAgents", "defaults"],
+  "properties": {
+    "enabledAgents": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["codex", "claude", "gemini"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "defaults": {
+      "type": "object",
+      "required": ["workingDirectory", "model", "sandboxMode"],
+      "properties": {
+        "workingDirectory": { "type": "string" },
+        "model": { "type": ["string", "null"] },
+        "sandboxMode": {
+          "type": "string",
+          "enum": ["read-only", "workspace-write", "danger-full-access"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
