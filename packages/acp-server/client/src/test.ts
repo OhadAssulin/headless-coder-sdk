@@ -41,14 +41,15 @@ async function createSession(provider: string) {
 async function streamMessage(sessionId: string): Promise<string> {
   await mkdir(STREAM_DIR, { recursive: true });
   const outPath = path.join(STREAM_DIR, `stream-${Date.now()}.ndjson`);
-  const schema = {
-    type: 'object',
-    properties: {
-      summary: { type: 'string' },
-      risks: { type: 'array', items: { type: 'string' }, minItems: 1 },
-    },
-    required: ['summary', 'risks'],
-  } as const;
+const schema = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    risks: { type: 'array', items: { type: 'string' }, minItems: 1 },
+  },
+  required: ['summary', 'risks'],
+  additionalProperties: false,
+} as const;
 
   const response = await fetch(`${BASE_URL}/api/acp/messages?stream=true`, {
     method: 'POST',
