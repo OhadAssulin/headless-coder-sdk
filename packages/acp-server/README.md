@@ -41,4 +41,65 @@ The e2e script launches the server, waits for readiness, then runs `client/src/t
 1. Calls `GET /api/acp/agents`
 2. Validates that at least one agent is available
 
+### “Interesting” client example
+Below is a minimal Node client (can live anywhere) that:
+1. Lists agents.
+2. Creates a session for the first provider.
+3. Sends a prompt requesting structured JSON output.
+4. Streams NDJSON frames and prints them as they arrive.
+
+```ts
+import fetch from 'node-fetch';
+
+const BASE_URL = process.env.ACP_BASE_URL ?? 'http://localhost:8000';
+const headers = process.env.ACP_TOKEN
+  ? { Authorization: `Bearer ${process.env.ACP_TOKEN}`, 'Content-Type': 'application/json' }
+  : { 'Content-Type': 'application/json' };
+
+async function main() {
+  const agentsRes = await fetch(`${BASE_URL}/api/acp/agents`, { headers });
+  const agents = (await agentsRes.json()).agents;
+  const provider = agents[0].id;
+
+  const sessionRes = await fetch(`${BASE_URL}/api/acp/sessions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ provider }),
+  });
+  const { sessionId } = await sessionRes.json();
+
+  const schema = {
+    type: 'object',
+    properties: {
+      summary: { type: 'string' },
+      risks: { type: 'array', items: { type: 'string' }, minItems: 1 },
+    },
+    required: ['summary', 'risks'],
+  };
+
+  const response = await fetch(`${BASE_URL}/api/acp/messages?stream=true`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      sessionId,
+      content: 'Review the latest commit and explain top risks.',
+      outputSchema: schema,
+    }),
+  });
+
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    process.stdout.write(decoder.decode(value));
+  }
+}
+
+main().catch(err => {
+  console.error('Client failed', err);
+  process.exit(1);
+});
+```
+
 Feel free to expand the client to create sessions, send prompts, and consume streamed NDJSON frames using the same APIs demonstrated in the script.
