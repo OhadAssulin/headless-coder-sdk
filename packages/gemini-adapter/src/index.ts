@@ -5,7 +5,12 @@
 import { spawn, ChildProcess } from 'node:child_process';
 import * as readline from 'node:readline';
 import { once } from 'node:events';
-import { now } from '@headless-coder-sdk/core';
+import {
+  now,
+  registerAdapter,
+  getAdapterFactory,
+  createCoder,
+} from '@headless-coder-sdk/core';
 import type {
   AdapterFactory,
   HeadlessCoder,
@@ -26,8 +31,24 @@ export function createAdapter(defaults?: StartOpts): HeadlessCoder {
 }
 (createAdapter as AdapterFactory).coderName = CODER_NAME;
 
+const isNodeRuntime = typeof process !== 'undefined' && !!process.versions?.node;
+
+export function createHeadlessGemini(defaults?: StartOpts): HeadlessCoder {
+  ensureNodeRuntime('create a Gemini coder');
+  if (!getAdapterFactory(CODER_NAME)) {
+    registerAdapter(createAdapter as AdapterFactory);
+  }
+  return createCoder(CODER_NAME, defaults);
+}
+
 const STRUCTURED_OUTPUT_SUFFIX =
   'Respond with JSON that matches the provided schema. Do not include explanatory text outside the JSON.';
+
+function ensureNodeRuntime(action: string): void {
+  if (!isNodeRuntime) {
+    throw new Error(`@headless-coder-sdk/gemini-adapter can only ${action} inside Node.js.`);
+  }
+}
 
 const SOFT_KILL_DELAY_MS = 250;
 const HARD_KILL_DELAY_MS = 1500;
@@ -161,6 +182,7 @@ export class GeminiAdapter implements HeadlessCoder {
    *   Error: When the Gemini CLI exits with a non-zero status.
    */
   private async runInternal(handle: ThreadHandle, input: PromptInput, opts?: RunOpts): Promise<RunResult> {
+    ensureNodeRuntime('run Gemini');
     const state = handle.internal as GeminiThreadState;
     this.assertIdle(state);
     const prompt = applyOutputSchemaPrompt(input, opts?.outputSchema);
@@ -207,6 +229,7 @@ export class GeminiAdapter implements HeadlessCoder {
    *   Error: When the Gemini CLI process fails before emitting events.
    */
   private runStreamedInternal(handle: ThreadHandle, input: PromptInput, opts?: RunOpts): EventIterator {
+    ensureNodeRuntime('stream Gemini events');
     const state = handle.internal as GeminiThreadState;
     this.assertIdle(state);
     const prompt = applyOutputSchemaPrompt(input, opts?.outputSchema);

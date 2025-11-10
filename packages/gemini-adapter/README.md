@@ -13,15 +13,18 @@ You will also need the Gemini CLI installed somewhere on your PATH (or pass `gem
 ## Usage
 
 ```ts
-import { registerAdapter, createCoder } from '@headless-coder-sdk/core';
-import { CODER_NAME as GEMINI, createAdapter } from '@headless-coder-sdk/gemini-adapter';
+import { createHeadlessGemini } from '@headless-coder-sdk/gemini-adapter';
 
-registerAdapter(GEMINI, createAdapter);
-const coder = createCoder(GEMINI, { includeDirectories: [process.cwd()] });
+const coder = createHeadlessGemini({
+  includeDirectories: [process.cwd()],
+  workingDirectory: process.cwd(),
+});
 
 const thread = await coder.startThread();
 const result = await thread.run('List the areas of the repo that need more tests.');
 console.log(result.text);
 ```
 
-> Note: resume support depends on the Gemini CLI version—check the package README or upstream release notes for the latest status.
+`createHeadlessGemini` registers the adapter and returns a coder, so you can instantiate it inside server code without touching the registry manually.
+
+> Note: resume support depends on the Gemini CLI version—check the package README or upstream release notes for the latest status. The adapter shells out via Node’s `child_process`, so keep it on the server (Next.js API routes, background workers, etc.).

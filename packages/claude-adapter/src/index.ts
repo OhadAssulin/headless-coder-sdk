@@ -10,7 +10,12 @@ import {
   type PermissionMode,
 } from '@anthropic-ai/claude-agent-sdk';
 import { randomUUID } from 'node:crypto';
-import { now } from '@headless-coder-sdk/core';
+import {
+  now,
+  registerAdapter,
+  getAdapterFactory,
+  createCoder,
+} from '@headless-coder-sdk/core';
 import type {
   AdapterFactory,
   HeadlessCoder,
@@ -31,6 +36,16 @@ export function createAdapter(defaults?: StartOpts): HeadlessCoder {
 }
 (createAdapter as AdapterFactory).coderName = CODER_NAME;
 
+const isNodeRuntime = typeof process !== 'undefined' && !!process.versions?.node;
+
+export function createHeadlessClaude(defaults?: StartOpts): HeadlessCoder {
+  ensureNodeRuntime('create a Claude coder');
+  if (!getAdapterFactory(CODER_NAME)) {
+    registerAdapter(createAdapter as AdapterFactory);
+  }
+  return createCoder(CODER_NAME, defaults);
+}
+
 interface ClaudeThreadState {
   sessionId: string;
   opts: StartOpts;
@@ -48,6 +63,12 @@ interface ActiveClaudeRun {
 
 const STRUCTURED_OUTPUT_SUFFIX =
   'You must respond with valid JSON that satisfies the provided schema. Do not include prose before or after the JSON.';
+
+function ensureNodeRuntime(action: string): void {
+  if (!isNodeRuntime) {
+    throw new Error(`@headless-coder-sdk/claude-adapter can only ${action} inside Node.js.`);
+  }
+}
 
 function applyOutputSchemaPrompt(input: PromptInput, schema?: object): PromptInput {
   if (!schema) return input;
@@ -187,8 +208,9 @@ export class ClaudeAdapter implements HeadlessCoder {
    *
    * Raises:
    *   Error: Propagated when the Claude Agent SDK surfaces a failure event.
-   */
-  private async runInternal(thread: ThreadHandle, input: PromptInput, runOpts?: RunOpts): Promise<RunResult> {
+  */
+ private async runInternal(thread: ThreadHandle, input: PromptInput, runOpts?: RunOpts): Promise<RunResult> {
+    ensureNodeRuntime('run Claude');
     const state = thread.internal as ClaudeThreadState;
     this.assertIdle(state);
     const structuredPrompt = applyOutputSchemaPrompt(toPrompt(input), runOpts?.outputSchema);
@@ -250,12 +272,13 @@ export class ClaudeAdapter implements HeadlessCoder {
    *
    * Raises:
    *   Error: Propagated when the Claude Agent SDK terminates with an error.
-   */
-  private runStreamedInternal(
-    thread: ThreadHandle,
-    input: PromptInput,
-    runOpts?: RunOpts,
-  ): EventIterator {
+  */
+ private runStreamedInternal(
+   thread: ThreadHandle,
+   input: PromptInput,
+   runOpts?: RunOpts,
+ ): EventIterator {
+    ensureNodeRuntime('stream Claude events');
     const state = thread.internal as ClaudeThreadState;
     this.assertIdle(state);
     const structuredPrompt = applyOutputSchemaPrompt(toPrompt(input), runOpts?.outputSchema);

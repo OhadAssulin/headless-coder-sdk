@@ -11,15 +11,15 @@ npm install @headless-coder-sdk/core @headless-coder-sdk/claude-adapter @anthrop
 ## Usage
 
 ```ts
-import { registerAdapter, createCoder } from '@headless-coder-sdk/core';
-import { CODER_NAME as CLAUDE, createAdapter } from '@headless-coder-sdk/claude-adapter';
+import { createHeadlessClaude } from '@headless-coder-sdk/claude-adapter';
 
-registerAdapter(CLAUDE, createAdapter);
-const coder = createCoder(CLAUDE, { permissionMode: 'bypassPermissions' });
+const coder = createHeadlessClaude({ permissionMode: 'bypassPermissions' });
 
 const thread = await coder.startThread({ workingDirectory: process.cwd() });
 const result = await thread.run('Summarise the feature flag rollout plan.');
 console.log(result.text);
 ```
+
+`createHeadlessClaude` registers the adapter (if needed) and returns a coder so you can skip the manual `registerAdapter` boilerplate.
 
 > Heads up: the Anthropic SDK requires Node 18+. Make sure the `CLAUDE_API_KEY` environment variable is available before running the adapter.

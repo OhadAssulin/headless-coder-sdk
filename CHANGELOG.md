@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.1] - 2025-11-10
+### ✨ Helper APIs
+- Added `createHeadlessClaude()` and `createHeadlessGemini()` convenience helpers, mirroring the Codex helper so consumers can get a coder without calling `registerAdapter` manually.
+- Both adapters now guard their runtime entry points to ensure they only execute on the server (Node) and emit clearer errors when imported in browser builds.
+- Documentation and smoke tests now demonstrate the helper-based workflows, keeping framework examples (Next.js, etc.) concise.
+
 ## [0.14.0] - 2025-11-10
 ### 🚀 Enhancements
 - Added `createHeadlessCodex()` helper that auto-registers the adapter and returns a coder, reducing the boilerplate needed in most server runtimes.

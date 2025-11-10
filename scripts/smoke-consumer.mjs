@@ -61,6 +61,9 @@ assert.equal(typeof core.createCoder, 'function');
 assert.equal(typeof codex.createAdapter, 'function');
 assert.equal(typeof claude.createAdapter, 'function');
 assert.equal(typeof gemini.createAdapter, 'function');
+assert.equal(typeof codex.createHeadlessCodex, 'function');
+assert.equal(typeof claude.createHeadlessClaude, 'function');
+assert.equal(typeof gemini.createHeadlessGemini, 'function');
 
 const codexPkg = path.dirname(require.resolve('@headless-coder-sdk/codex-adapter/package.json'));
 const workerPath = path.join(codexPkg, 'dist', 'worker.js');
@@ -69,15 +72,23 @@ assert.ok(fs.existsSync(workerPath), 'codex worker.js must stay adjacent to the 
 console.log('[smoke] CommonJS imports succeeded');
 `.trimStart();
 
-  const esm = `
+const esm = `
 import assert from 'node:assert/strict';
-import { registerAdapter, clearRegisteredAdapters } from '@headless-coder-sdk/core';
-import { CODER_NAME as CLAUDE, createAdapter as createClaude } from '@headless-coder-sdk/claude-adapter';
-import { CODER_NAME as GEMINI, createAdapter as createGemini } from '@headless-coder-sdk/gemini-adapter';
+import { clearRegisteredAdapters } from '@headless-coder-sdk/core';
+import { createHeadlessCodex } from '@headless-coder-sdk/codex-adapter';
+import { createHeadlessClaude } from '@headless-coder-sdk/claude-adapter';
+import { createHeadlessGemini } from '@headless-coder-sdk/gemini-adapter';
 
-assert.equal(typeof registerAdapter, 'function');
-registerAdapter(createClaude);
-registerAdapter(createGemini);
+const codex = createHeadlessCodex();
+assert.equal(typeof codex.startThread, 'function');
+clearRegisteredAdapters();
+
+const claude = createHeadlessClaude();
+assert.equal(typeof claude.startThread, 'function');
+clearRegisteredAdapters();
+
+const gemini = createHeadlessGemini({ workingDirectory: process.cwd() });
+assert.equal(typeof gemini.startThread, 'function');
 clearRegisteredAdapters();
 
 console.log('[smoke] ESM imports succeeded');
