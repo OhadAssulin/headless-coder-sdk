@@ -11,11 +11,13 @@
     "build": "node ./scripts/run-workspaces.mjs build",
     "lint": "eslint .",
     "test": "node ./scripts/run-workspaces.mjs test",
+    "smoke": "node ./scripts/smoke-consumer.mjs",
     "acp:e2e": "npm run e2e --workspace packages/acp-server"
   },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.30",
     "@types/node": "^20.12.7",
+    "tsup": "^8.5.0",
     "tsx": "^4.19.1",
     "typescript": "^5.4.0"
   }

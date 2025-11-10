@@ -1,18 +1,25 @@
 {
   "name": "@headless-coder-sdk/claude-adapter",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "README.md", "LICENSE"],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsup --config tsup.config.ts"
   },
   "peerDependencies": {
     "@anthropic-ai/claude-agent-sdk": "*",
-    "@headless-coder-sdk/core": "^0.12.0"
+    "@headless-coder-sdk/core": "^0.13.0"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

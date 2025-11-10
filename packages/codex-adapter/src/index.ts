@@ -20,7 +20,8 @@ import type {
   Provider,
 } from '@headless-coder-sdk/core';
 
-const WORKER_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'worker.js');
+const moduleFilename = typeof __filename === 'string' ? __filename : fileURLToPath(import.meta.url);
+const WORKER_PATH = path.join(path.dirname(moduleFilename), 'worker.js');
 const SOFT_KILL_DELAY_MS = 250;
 const HARD_KILL_DELAY_MS = 1500;
 const DONE = Symbol('stream-done');

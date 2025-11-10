@@ -296,4 +296,19 @@ Open an [issue](https://github.com/OhadAssulin/headless-coder-sdk/issues) or sub
 
 ---
 
+## 📦 Distribution Notes
+
+- Every workspace now emits flattened entry points at `dist/*.js` (ESM) and `dist/*.cjs` (CommonJS), with `.d.ts` files sitting beside them for better editor support.
+- `package.json` is exposed via the exports map (`import '@headless-coder-sdk/core/package.json'`) for tooling that needs to inspect versions at runtime.
+- `@headless-coder-sdk/codex-adapter` forks a worker via `fileURLToPath(new URL('./worker.js', import.meta.url))`; keep `dist/worker.js` adjacent when rebundling so that child processes can spawn correctly.
+
+---
+
+## ✅ Smoke Tests
+
+- `npm run smoke` builds every workspace, packs the publishable tarballs, installs them in a throwaway project, and exercises both CommonJS and ESM entry points.
+- Set `HEADLESS_CODER_KEEP_SMOKE_TMP=1 npm run smoke` if you want to inspect the generated smoke project instead of deleting it.
+
+---
+
 © 2025 Ohad Assulin - MIT License

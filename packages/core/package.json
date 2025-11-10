@@ -1,23 +1,34 @@
 {
   "name": "@headless-coder-sdk/core",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Unified SDK for headless AI coders (Codex, Claude, Gemini) with standardized threading, streaming, and sandboxing.",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
-    "./factory": "./dist/factory.js",
-    "./types": "./dist/types.js"
+    "./factory": {
+      "types": "./dist/factory.d.ts",
+      "import": "./dist/factory.js",
+      "require": "./dist/factory.cjs"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "require": "./dist/types.cjs"
+    },
+    "./package.json": "./package.json"
   },
-  "files": ["dist", "src", "README.md", "LICENSE"  ],
+  "files": ["dist", "README.md", "LICENSE"],
   "license": "MIT",
   "publishConfig": { "access": "public" },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsup --config tsup.config.ts"
   },
   "devDependencies": {
     "typescript": "^5.4.0"
