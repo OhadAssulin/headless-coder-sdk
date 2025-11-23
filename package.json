@@ -1,7 +1,7 @@
 {
   "name": "headless-coder-sdk",
   "private": true,
-  "version": "0.23.0",
+  "version": "0.24.0",
   "type": "module",
   "workspaces": [
     "packages/*",
@@ -15,7 +15,7 @@
     "acp:e2e": "npm run e2e --workspace packages/acp-server"
   },
   "devDependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.46",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.50",
     "@types/node": "^20.12.7",
     "tsup": "^8.5.0",
     "tsx": "^4.19.1",

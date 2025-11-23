@@ -164,6 +164,7 @@ export class ClaudeAdapter implements HeadlessCoder {
   private buildOptions(state: ClaudeThreadState, runOpts?: RunOpts, useNativeStructuredOutput?: boolean): Options {
     const startOpts = state.opts ?? {};
     const resumeId = state.resume ? state.sessionId : undefined;
+    const settingSources = startOpts.settingSources ?? ['local', 'project', 'user'];
     const permissionMode: PermissionMode | undefined =
       (startOpts.permissionMode as PermissionMode | undefined) ?? (startOpts.yolo ? 'bypassPermissions' : undefined);
     const outputFormat =
@@ -185,6 +186,7 @@ export class ClaudeAdapter implements HeadlessCoder {
       permissionMode,
       permissionPromptToolName: startOpts.permissionPromptToolName,
       outputFormat,
+      settingSources,
     };
   }
 
@@ -650,3 +652,8 @@ function buildClaudeResultErrorMessage(result: any): string {
     'Claude run failed';
   return `Claude run failed: ${summary}`;
 }
+
+/**
+ * @internal Exported for testing stream event normalization only.
+ */
+export const __normalizeClaudeStreamMessage = normalizeClaudeStreamMessage;

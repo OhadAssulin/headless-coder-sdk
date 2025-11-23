@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@anthropic-ai/claude-agent-sdk':
-        specifier: ^0.1.46
-        version: 0.1.46(zod@3.25.76)
+        specifier: ^0.1.50
+        version: 0.1.50(zod@3.25.76)
       '@types/node':
         specifier: ^20.12.7
         version: 20.19.24
@@ -28,7 +28,7 @@ importers:
     dependencies:
       '@headless-coder-sdk/claude-adapter':
         specifier: file:../packages/claude-adapter
-        version: file:packages/claude-adapter(@anthropic-ai/claude-agent-sdk@0.1.46(zod@3.25.76))(@headless-coder-sdk/core@file:packages/core)
+        version: file:packages/claude-adapter(@anthropic-ai/claude-agent-sdk@0.1.50(zod@3.25.76))(@headless-coder-sdk/core@file:packages/core)
       '@headless-coder-sdk/codex-adapter':
         specifier: file:../packages/codex-adapter
         version: file:packages/codex-adapter(@headless-coder-sdk/core@file:packages/core)(@openai/codex-sdk@0.60.1)
@@ -82,8 +82,8 @@ importers:
   packages/claude-adapter:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
-        specifier: '>=0.1.46'
-        version: 0.1.46(zod@3.25.76)
+        specifier: '>=0.1.50'
+        version: 0.1.50(zod@3.25.76)
     devDependencies:
       '@headless-coder-sdk/core':
         specifier: workspace:*
@@ -114,7 +114,7 @@ importers:
     dependencies:
       '@headless-coder-sdk/claude-adapter':
         specifier: file:../claude-adapter
-        version: file:packages/claude-adapter(@anthropic-ai/claude-agent-sdk@0.1.46(zod@3.25.76))(@headless-coder-sdk/core@file:packages/core)
+        version: file:packages/claude-adapter(@anthropic-ai/claude-agent-sdk@0.1.50(zod@3.25.76))(@headless-coder-sdk/core@file:packages/core)
       '@headless-coder-sdk/codex-adapter':
         specifier: file:../codex-adapter
         version: file:packages/codex-adapter(@headless-coder-sdk/core@file:packages/core)(@openai/codex-sdk@0.60.1)
@@ -140,8 +140,8 @@ importers:
 
 packages:
 
-  '@anthropic-ai/claude-agent-sdk@0.1.46':
-    resolution: {integrity: sha512-2Jf8ODvZ8rAciQyal2s/ky2E83BRlWmIs66/aAzgb37OzP04uI47HWMuHj+GYlk19QakJRqN74L3+JT2bIj5Gg==}
+  '@anthropic-ai/claude-agent-sdk@0.1.50':
+    resolution: {integrity: sha512-vHOLohUeiVadWl4eTAbw12ACIG1wZ/NN4ScLe8P/yrsldT1QkYwn6ndkoilaFBB2gIHECEx7wRAtSfCLefge4Q==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       zod: ^3.24.1
@@ -339,13 +339,13 @@ packages:
   '@headless-coder-sdk/claude-adapter@file:packages/claude-adapter':
     resolution: {directory: packages/claude-adapter, type: directory}
     peerDependencies:
-      '@anthropic-ai/claude-agent-sdk': '>=0.1.46'
-      '@headless-coder-sdk/core': ^0.23.0
+      '@anthropic-ai/claude-agent-sdk': '>=0.1.50'
+      '@headless-coder-sdk/core': ^0.24.0
 
   '@headless-coder-sdk/codex-adapter@file:packages/codex-adapter':
     resolution: {directory: packages/codex-adapter, type: directory}
     peerDependencies:
-      '@headless-coder-sdk/core': ^0.23.0
+      '@headless-coder-sdk/core': ^0.24.0
       '@openai/codex-sdk': '>=0.60.0 <0.80.0'
 
   '@headless-coder-sdk/core@file:packages/core':
@@ -354,7 +354,7 @@ packages:
   '@headless-coder-sdk/gemini-adapter@file:packages/gemini-adapter':
     resolution: {directory: packages/gemini-adapter, type: directory}
     peerDependencies:
-      '@headless-coder-sdk/core': ^0.23.0
+      '@headless-coder-sdk/core': ^0.24.0
 
   '@i-am-bee/acp-sdk@0.0.6':
     resolution: {integrity: sha512-8CdD8Ehm/Tj45ZSuyVCv8e/+LIHH32FTQrS66+UzE5sSNbkPBA81+UyjE5q36PhmxwXYJZULbboPNnaWk4zsZQ==}
@@ -1500,7 +1500,7 @@ packages:
 
 snapshots:
 
-  '@anthropic-ai/claude-agent-sdk@0.1.46(zod@3.25.76)':
+  '@anthropic-ai/claude-agent-sdk@0.1.50(zod@3.25.76)':
     dependencies:
       zod: 3.25.76
     optionalDependencies:
@@ -1622,9 +1622,9 @@ snapshots:
   '@esbuild/win32-x64@0.25.12':
     optional: true
 
-  '@headless-coder-sdk/claude-adapter@file:packages/claude-adapter(@anthropic-ai/claude-agent-sdk@0.1.46(zod@3.25.76))(@headless-coder-sdk/core@file:packages/core)':
+  '@headless-coder-sdk/claude-adapter@file:packages/claude-adapter(@anthropic-ai/claude-agent-sdk@0.1.50(zod@3.25.76))(@headless-coder-sdk/core@file:packages/core)':
     dependencies:
-      '@anthropic-ai/claude-agent-sdk': 0.1.46(zod@3.25.76)
+      '@anthropic-ai/claude-agent-sdk': 0.1.50(zod@3.25.76)
       '@headless-coder-sdk/core': file:packages/core
 
   '@headless-coder-sdk/codex-adapter@file:packages/codex-adapter(@headless-coder-sdk/core@file:packages/core)(@openai/codex-sdk@0.60.1)':

@@ -43,6 +43,7 @@ export interface StartOpts {
   yolo?: boolean;
   permissionMode?: string;
   permissionPromptToolName?: string;
+  settingSources?: Array<'local' | 'project' | 'user'>;
 }
 
 /**

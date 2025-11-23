@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.24.0] - 2025-11-23
+### 🛠 Claude Agent SDK & Streaming
+- Bumped `@anthropic-ai/claude-agent-sdk` support to the latest `0.1.50` with a safe range `<0.1.99`.
+- Default Claude adapter now loads local/project/user `.claude` settings via `settingSources` so SDK runs mirror the CLI (fixes credential/config loading when a workingDirectory is provided).
+- Added a live streaming test that validates partial message handling end-to-end against a `.claude` workspace.
+
 ## [0.23.0] - 2025-11-23
 ### 🧩 Codex SDK Compatibility
 - Broadened `@openai/codex-sdk` peer/dev range to `>=0.60.0 <0.80.0` in the Codex adapter so consumers can install newer 0.6x releases (e.g., 0.63+).
