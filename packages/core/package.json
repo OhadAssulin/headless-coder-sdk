@@ -1,6 +1,6 @@
 {
   "name": "@headless-coder-sdk/core",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "description": "Unified SDK for headless AI coders (Codex, Claude, Gemini) with standardized threading, streaming, and sandboxing.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -24,9 +24,15 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "license": "MIT",
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup --config tsup.config.ts"
   },

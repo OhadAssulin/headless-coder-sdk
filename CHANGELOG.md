@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.23.0] - 2025-11-23
+### 🧩 Codex SDK Compatibility
+- Broadened `@openai/codex-sdk` peer/dev range to `>=0.60.0 <0.80.0` in the Codex adapter so consumers can install newer 0.6x releases (e.g., 0.63+).
+- Bumped all packages to `0.23.0` to publish the widened compatibility.
+
 ## [0.22.0] - 2025-11-20
 ### 🛠 Codex SDK Update
 - Bumped `@openai/codex-sdk` to `0.60.1` so the Codex adapter stays current with the latest CLI fixes and streaming improvements.
