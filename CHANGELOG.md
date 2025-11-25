@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.25.0] - 2025-11-25
+### 📚 Adapter Guide & Provider Types
+- Widened the `Provider`/`AdapterName` types so third-party adapters can use custom provider strings without casts.
+- Refreshed the "Create Your Own Adapter" guide with correct export map, handle wiring, and AbortController usage, plus linked it from the core README.
+- Bumped all packages to `0.25.0` to publish the documentation and typing updates.
+
 ## [0.24.0] - 2025-11-23
 ### 🛠 Claude Agent SDK & Streaming
 - Bumped `@anthropic-ai/claude-agent-sdk` support to the latest `0.1.50` with a safe range `<0.1.99`.

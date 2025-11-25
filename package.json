@@ -1,7 +1,7 @@
 {
   "name": "headless-coder-sdk",
   "private": true,
-  "version": "0.24.0",
+  "version": "0.25.0",
   "type": "module",
   "workspaces": [
     "packages/*",

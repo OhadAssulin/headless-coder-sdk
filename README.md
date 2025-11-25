@@ -313,7 +313,7 @@ When aborted, streams emit a `cancelled` event and async runs throw an `AbortErr
 ## 🧱 Build Your Own Adapter
 
 Want to support another provider?  
-Follow the [Create Your Own Adapter guide](docs/create-your-own-adapter.md) - it covers exports, registry usage, event mapping, and sandbox permissions.
+Follow the [Create Your Own Adapter guide](https://github.com/OhadAssulin/headless-coder-sdk/blob/main/docs/create-your-own-adapter.md) - it covers exports, registry usage, event mapping, and sandbox permissions.
 
 ---
 

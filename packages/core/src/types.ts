@@ -5,12 +5,12 @@
 /**
  * Provider discriminant used for selecting a headless-coder-sdk implementation.
  */
-export type Provider = 'codex' | 'gemini' | 'claude';
+export type Provider = 'codex' | 'gemini' | 'claude' | (string & {});
 
 /**
  * Adapter identifiers supplied by individual adapter packages.
  */
-export type AdapterName = Provider | (string & {});
+export type AdapterName = Provider;
 
 /**
  * Alias exposed for developer ergonomics when referring to provider identifiers.

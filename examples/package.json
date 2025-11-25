@@ -1,7 +1,7 @@
 {
   "name": "@headless-coder-sdk/examples-tests",
   "private": true,
-  "version": "0.24.0",
+  "version": "0.25.0",
   "type": "module",
   "main": "src/codex-web-calculator.test.ts",
   "files": [

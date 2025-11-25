@@ -31,11 +31,20 @@ my-cool-coder-adapter/
   "name": "@acme/my-cool-coder-adapter",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
   "files": ["dist"],
   "scripts": { "build": "tsc -p tsconfig.json" },
-  "peerDependencies": { "@headless-coder-sdk/core": "^0.1.0" }
+  "peerDependencies": { "@headless-coder-sdk/core": "^0.25.0" }
 }
 ```
 
@@ -64,6 +73,7 @@ export const CODER_NAME = 'my-cool-coder' as const;
 type StartOpts = {
   model?: string;
   workingDirectory?: string;
+  // add your provider-specific options here
 };
 
 function normalizeInput(input: PromptInput): string {
@@ -89,28 +99,44 @@ export function createAdapter(defaults?: StartOpts): HeadlessCoder {
   return {
     async startThread(opts?: StartOpts): Promise<ThreadHandle> {
       const config = { ...defaults, ...opts };
-      const internal = { sessionId: undefined as string | undefined, config };
-      return { provider: CODER_NAME, internal, id: internal.sessionId };
+      const internal = { sessionId: undefined as string | undefined, config, controller: null as AbortController | null };
+
+      const handle: ThreadHandle = {
+        provider: CODER_NAME,
+        internal,
+        id: internal.sessionId,
+        run: (input, runOpts) => runImpl(handle, input, runOpts),
+        runStreamed: (input, runOpts) => runStreamedImpl(handle, input, runOpts),
+        interrupt: async reason => {
+          if (internal.controller && !internal.controller.signal.aborted) {
+            internal.controller.abort(reason ?? 'Interrupted');
+          }
+        },
+      };
+
+      return handle;
     },
 
     async resumeThread(threadId: string, opts?: StartOpts): Promise<ThreadHandle> {
       const config = { ...defaults, ...opts };
-      const internal = { sessionId: threadId, config };
-      return { provider: CODER_NAME, internal, id: threadId };
+      const internal = { sessionId: threadId, config, controller: null as AbortController | null };
+      const handle: ThreadHandle = {
+        provider: CODER_NAME,
+        internal,
+        id: threadId,
+        run: (input, runOpts) => runImpl(handle, input, runOpts),
+        runStreamed: (input, runOpts) => runStreamedImpl(handle, input, runOpts),
+        interrupt: async reason => {
+          if (internal.controller && !internal.controller.signal.aborted) {
+            internal.controller.abort(reason ?? 'Interrupted');
+          }
+        },
+      };
+      return handle;
     },
 
     async run(thread: ThreadHandle, input: PromptInput, runOpts?: RunOpts): Promise<RunResult> {
-      const prompt = normalizeInput(input);
-      if (runOpts?.signal?.aborted) {
-        throw createAbortError(runOpts.signal.reason);
-      }
-      const abortHandler = () => {
-        throw createAbortError(runOpts?.signal?.reason);
-      };
-      runOpts?.signal?.addEventListener('abort', abortHandler, { once: true });
-      const text = `(demo) my-cool-coder response to: ${prompt}`;
-      runOpts?.signal?.removeEventListener('abort', abortHandler);
-      return { threadId: thread.id, text, raw: { demo: true } };
+      return runImpl(thread, input, runOpts);
     },
 
     async *runStreamed(
@@ -118,29 +144,50 @@ export function createAdapter(defaults?: StartOpts): HeadlessCoder {
       input: PromptInput,
       runOpts?: RunOpts,
     ): AsyncIterable<CoderStreamEvent> {
-      const ts = Date.now();
-      yield { type: 'init', provider: CODER_NAME, threadId: thread.id, ts, originalItem: { demo: true } };
-      yield {
-        type: 'message',
-        provider: CODER_NAME,
-        role: 'assistant',
-        text: `(demo stream) responding to ${normalizeInput(input)}`,
-        ts,
-        originalItem: null,
-      };
-      yield { type: 'done', provider: CODER_NAME, ts, originalItem: null };
+      yield* runStreamedImpl(thread, input, runOpts);
     },
 
     getThreadId(thread: ThreadHandle) {
       return thread.id;
     },
     interrupt: async reason => {
-      /* abort in-flight requests here */
-      void reason;
+      void reason; // actual abort lives on the thread handle created above
     },
   };
 }
 (createAdapter as AdapterFactory).coderName = CODER_NAME;
+
+async function runImpl(thread: ThreadHandle, input: PromptInput, runOpts?: RunOpts): Promise<RunResult> {
+  const prompt = normalizeInput(input);
+  if (runOpts?.signal?.aborted) {
+    throw createAbortError(runOpts.signal.reason);
+  }
+  const abortHandler = () => {
+    throw createAbortError(runOpts?.signal?.reason);
+  };
+  runOpts?.signal?.addEventListener('abort', abortHandler, { once: true });
+  const text = `(demo) my-cool-coder response to: ${prompt}`;
+  runOpts?.signal?.removeEventListener('abort', abortHandler);
+  return { threadId: thread.id, text, raw: { demo: true } };
+}
+
+async function* runStreamedImpl(
+  thread: ThreadHandle,
+  input: PromptInput,
+  runOpts?: RunOpts,
+): AsyncIterable<CoderStreamEvent> {
+  const ts = Date.now();
+  yield { type: 'init', provider: CODER_NAME, threadId: thread.id, ts, originalItem: { demo: true } };
+  yield {
+    type: 'message',
+    provider: CODER_NAME,
+    role: 'assistant',
+    text: `(demo stream) responding to ${normalizeInput(input)}`,
+    ts,
+    originalItem: null,
+  };
+  yield { type: 'done', provider: CODER_NAME, ts, originalItem: null };
+}
 ```
 
 > 💡 Always include the provider’s raw event in `originalItem` for debugging and auditing.

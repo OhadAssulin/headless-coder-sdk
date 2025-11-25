@@ -1,6 +1,6 @@
 {
   "name": "@headless-coder-sdk/codex-adapter",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -22,7 +22,7 @@
     "build": "tsup --config tsup.config.ts"
   },
   "peerDependencies": {
-    "@headless-coder-sdk/core": "^0.24.0",
+    "@headless-coder-sdk/core": "^0.25.0",
     "@openai/codex-sdk": ">=0.60.0 <0.80.0"
   },
   "devDependencies": {
