@@ -235,6 +235,70 @@ In this workflow two reviewers (Claude, Codex) analyze the same commit in parall
 
 ---
 
+## 🛠 Custom Tools (Claude)
+
+The SDK provides a unified interface for creating custom tools that extend Claude's capabilities, following the Claude Agent SDK's MCP (Model Context Protocol) pattern:
+
+```ts
+import { tool, createMCPServer, getToolName } from '@headless-coder-sdk/core';
+import { createHeadlessClaude } from '@headless-coder-sdk/claude-adapter';
+
+// Define a custom tool
+const weatherTool = tool(
+  'get_weather',
+  'Get current temperature for a location using coordinates',
+  {
+    latitude: { type: 'number', description: 'Latitude coordinate' },
+    longitude: { type: 'number', description: 'Longitude coordinate' }
+  },
+  async (args) => {
+    const response = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${args.latitude}&longitude=${args.longitude}&current=temperature_2m&temperature_unit=fahrenheit`
+    );
+    const data = await response.json();
+
+    return {
+      content: [{
+        type: 'text',
+        text: `Temperature: ${data.current.temperature_2m}°F`
+      }]
+    };
+  }
+);
+
+// Create an MCP server with your tools
+const weatherServer = createMCPServer({
+  name: 'weather-tools',
+  version: '1.0.0',
+  tools: [weatherTool]
+});
+
+// Use with Claude
+const claude = createHeadlessClaude({
+  workingDirectory: process.cwd(),
+  mcpServers: {
+    'weather-tools': weatherServer
+  },
+  allowedTools: [getToolName('weather-tools', 'get_weather')],
+  permissionMode: 'bypassPermissions'
+});
+
+const thread = await claude.startThread();
+const result = await thread.run("What's the weather in San Francisco? (37.7749, -122.4194)");
+console.log(result.text);
+```
+
+**Key Features:**
+- **Type-safe schemas** – Define input schemas with full TypeScript support
+- **Tool name management** – Use `getToolName(server, tool)` for proper MCP naming (`mcp__{server}__{tool}`)
+- **Selective permissions** – Control which tools Claude can use via `allowedTools`
+- **Streaming support** – Custom tools work seamlessly with `runStreamed()`
+- **Claude native** – Use Claude's native `tool()` and `createSdkMcpServer()` directly if preferred
+
+See `examples/src/claude-custom-tools.test.ts` for comprehensive examples including calculator, formatter, and multi-tool workflows.
+
+---
+
 ## ⚠️ Codex Adapter Runtime
 
 - The Codex adapter talks directly to the Codex CLI through Node APIs and **must run on the server**. It is safe to import in build tooling, but gate runtime usage to environments where `process.versions.node` exists.

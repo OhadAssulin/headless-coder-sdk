@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.26.0] - 2025-12-13
+### ✨ Custom Tools Support
+- Added comprehensive custom tools infrastructure following Claude Agent SDK patterns.
+- Core package now includes `tool()`, `createMCPServer()`, and helper utilities for creating custom tools with type-safe schemas.
+- New types: `ToolDefinition`, `ToolHandler`, `ToolResult`, `MCPServer`, and `ToolInputSchema` for unified tool creation across adapters.
+- Claude adapter gained automatic MCP server conversion, bridging generic tools to Claude Agent SDK format seamlessly.
+- Export `getToolName()` and `getServerToolNames()` helpers to simplify tool name management (format: `mcp__{server}__{tool}`).
+- Enhanced `StartOpts.mcpServers` and `StartOpts.allowedTools` documentation with clear patterns and examples.
+- Added comprehensive examples: `claude-custom-tools.test.ts` (weather, calculator, formatter tools with streaming) and `custom-tools-simple.ts`.
+
+### 🛠 Codex Adapter
+- Default model is now `gpt-5.2` when no model is specified in `StartOpts`.
+- Exported `DEFAULT_MODEL` constant for easy reference.
+
+### 📚 Documentation
+- Added `CLAUDE.md` at repository root with architecture, build commands, and development guidance for Claude Code instances.
+- Updated root README with custom tools examples.
+- Core package README now documents tool creation patterns.
+
 ## [0.25.0] - 2025-11-25
 ### 📚 Adapter Guide & Provider Types
 - Widened the `Provider`/`AdapterName` types so third-party adapters can use custom provider strings without casts.
