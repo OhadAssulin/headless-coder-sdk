@@ -49,6 +49,8 @@ function ensureNodeRuntime(action: string): void {
 }
 
 export const CODER_NAME: Provider = 'codex';
+export const DEFAULT_MODEL = 'gpt-5.2';
+
 export function createAdapter(defaults?: StartOpts): HeadlessCoder {
   return new CodexAdapter(defaults);
 }
@@ -250,7 +252,7 @@ export class CodexAdapter implements HeadlessCoder {
 
   private extractThreadOptions(opts: StartOpts): CodexThreadOptions {
     return {
-      model: opts.model,
+      model: opts.model ?? DEFAULT_MODEL,
       sandboxMode: opts.sandboxMode,
       workingDirectory: opts.workingDirectory,
       skipGitRepoCheck: opts.skipGitRepoCheck,
