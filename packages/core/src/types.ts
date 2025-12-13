@@ -25,6 +25,65 @@ export type PromptInput =
   | Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
 
 /**
+ * Tool result content format following MCP protocol.
+ */
+export interface ToolResultContent {
+  type: 'text' | 'image' | 'resource';
+  text?: string;
+  data?: string;
+  mimeType?: string;
+  [key: string]: any;
+}
+
+/**
+ * Tool result returned by custom tool handlers.
+ */
+export interface ToolResult {
+  content: ToolResultContent[];
+  isError?: boolean;
+}
+
+/**
+ * Handler function for custom tools.
+ *
+ * @param args - Arguments passed to the tool, validated against the input schema
+ * @returns Tool result with content array
+ */
+export type ToolHandler<TArgs = any> = (args: TArgs) => Promise<ToolResult> | ToolResult;
+
+/**
+ * Input schema definition for tools.
+ * Can be a simple type mapping (e.g., { latitude: number, longitude: number })
+ * or a full JSON Schema object.
+ */
+export type ToolInputSchema = Record<string, any> | {
+  type: 'object';
+  properties: Record<string, any>;
+  required?: string[];
+  [key: string]: any;
+};
+
+/**
+ * Definition of a custom tool.
+ */
+export interface ToolDefinition<TArgs = any> {
+  name: string;
+  description: string;
+  inputSchema: ToolInputSchema;
+  handler: ToolHandler<TArgs>;
+}
+
+/**
+ * MCP Server containing custom tools.
+ */
+export interface MCPServer {
+  name: string;
+  version: string;
+  tools: ToolDefinition[];
+  [key: string]: any;
+}
+
+/**
  * Options for starting or resuming a thread across providers.
  */
 export interface StartOpts {
@@ -33,8 +92,17 @@ export interface StartOpts {
   sandboxMode?: 'read-only' | 'workspace-write' | 'danger-full-access';
   skipGitRepoCheck?: boolean;
   codexExecutablePath?: string;
+  /**
+   * Array of allowed tool names. Tool names follow the pattern:
+   * - Built-in tools: tool name directly (e.g., "bash", "read")
+   * - MCP tools: mcp__{server_name}__{tool_name} (e.g., "mcp__my-server__get_weather")
+   */
   allowedTools?: string[];
-  mcpServers?: Record<string, unknown>;
+  /**
+   * MCP servers providing custom tools.
+   * Key is the server name, value is the server definition or provider-specific server object.
+   */
+  mcpServers?: Record<string, MCPServer | unknown>;
   continue?: boolean;
   resume?: string;
   forkSession?: boolean;

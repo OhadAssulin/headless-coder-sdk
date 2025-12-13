@@ -5,6 +5,7 @@ export default defineConfig({
     index: 'src/index.ts',
     factory: 'src/factory.ts',
     types: 'src/types.ts',
+    tools: 'src/tools.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,

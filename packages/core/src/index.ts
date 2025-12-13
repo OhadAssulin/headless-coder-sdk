@@ -10,3 +10,10 @@ export {
   getAdapterFactory,
   createCoder,
 } from './factory.js';
+export {
+  tool,
+  createMCPServer,
+  normalizeInputSchema,
+  getToolName,
+  getServerToolNames,
+} from './tools.js';

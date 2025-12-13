@@ -28,6 +28,7 @@ import type {
   EventIterator,
   Provider,
 } from '@headless-coder-sdk/core';
+import { convertMCPServers } from './tools.js';
 
 export const CODER_NAME: Provider = 'claude';
 
@@ -177,7 +178,7 @@ export class ClaudeAdapter implements HeadlessCoder {
     return {
       cwd: startOpts.workingDirectory,
       allowedTools: startOpts.allowedTools,
-      mcpServers: startOpts.mcpServers as any,
+      mcpServers: convertMCPServers(startOpts.mcpServers) as any,
       continue: !!startOpts.continue,
       resume: resumeId,
       forkSession: startOpts.forkSession,
@@ -657,3 +658,13 @@ function buildClaudeResultErrorMessage(result: any): string {
  * @internal Exported for testing stream event normalization only.
  */
 export const __normalizeClaudeStreamMessage = normalizeClaudeStreamMessage;
+
+/**
+ * Export tool utilities for Claude adapter.
+ */
+export {
+  convertToolToClaudeTool,
+  convertMCPServerToClaudeServer,
+  tool,
+  createSdkMcpServer,
+} from './tools.js';
