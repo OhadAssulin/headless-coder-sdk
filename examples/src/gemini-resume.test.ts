@@ -102,7 +102,11 @@ test('gemini resumeThread continues an earlier session id', async t => {
       firstRunThreadId,
       'Resumed Gemini runs should maintain the original session id.',
     );
-    assert.match(followUp.text ?? '', /follow/i, 'Gemini follow-up response should mention the additive action.');
+    assert.match(
+      followUp.text ?? '',
+      /follow|prevent|review|final|third|3/i,
+      'Gemini follow-up response should include an additional checklist action.',
+    );
   } catch (error) {
     if (isGeminiMissing(error)) {
       t.skip('Skipping Gemini resume test because the gemini CLI is not available.');

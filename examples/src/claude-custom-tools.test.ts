@@ -10,6 +10,7 @@
 
 import { tool, createMCPServer, getToolName } from '@headless-coder-sdk/core';
 import { createHeadlessClaude } from '@headless-coder-sdk/claude-adapter';
+import { z } from 'zod/v4';
 
 // Example 1: Simple weather tool
 const weatherTool = tool(
@@ -287,7 +288,7 @@ async function claudeNativeToolsExample() {
       claudeTool(
         'reverse_string',
         'Reverse a string',
-        { text: { type: 'string' } } as any,
+        { text: z.string() },
         async (args: any) => ({
           content: [{ type: 'text', text: args.text.split('').reverse().join('') }],
         })

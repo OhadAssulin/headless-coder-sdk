@@ -99,6 +99,7 @@ test('gemini streams a sin/cos calculator', async t => {
   }
 
   const degreesInput = window.document.getElementById('trigAngleDegrees') as HTMLInputElement | null;
+  const radiansInput = window.document.getElementById('trigAngleRadians') as HTMLInputElement | null;
   const trigButton = window.document.getElementById('trigCompute');
   const sinSpan = window.document.getElementById('trigSin');
   const cosSpan = window.document.getElementById('trigCos');
@@ -106,10 +107,13 @@ test('gemini streams a sin/cos calculator', async t => {
   assert.ok(degreesInput && trigButton && sinSpan && cosSpan, 'Calculator DOM elements must exist.');
 
   degreesInput.value = '30';
+  if (radiansInput) {
+    radiansInput.value = '';
+  }
   if (typeof window.handleTrig === 'function') {
     window.handleTrig();
   }
-  trigButton.dispatchEvent(new window.Event('click'));
+  trigButton.dispatchEvent(new window.Event('click', { bubbles: true, cancelable: true }));
 
   const sinContent = sinSpan.textContent?.toLowerCase() ?? '';
   const cosContent = cosSpan.textContent?.toLowerCase() ?? '';

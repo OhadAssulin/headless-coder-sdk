@@ -12,6 +12,7 @@ import { JSDOM } from 'jsdom';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CODEX_CODER_NAME } from '@headless-coder-sdk/codex-adapter';
 import { ensureAdaptersRegistered } from './register-adapters';
+import { codexLiveSkipReason } from './codex-test-utils';
 import type { PromptInput } from '@headless-coder-sdk/core/types';
 
 const WORKSPACE = process.env.CODEX_STREAM_WORKSPACE ?? '/tmp/headless-coder-sdk/test_codex_stream';
@@ -43,7 +44,7 @@ function buildPrompt(workspace: string): PromptInput {
 
 ensureAdaptersRegistered();
 
-test('codex streams a sin/cos calculator', async () => {
+test('codex streams a sin/cos calculator', async t => {
   await rm(path.join(WORKSPACE, 'index.html'), { force: true });
   await rm(path.join(WORKSPACE, STREAM_FILE), { force: true });
   await mkdir(WORKSPACE, { recursive: true });
@@ -62,6 +63,13 @@ test('codex streams a sin/cos calculator', async () => {
     for await (const event of thread.runStreamed(buildPrompt(WORKSPACE))) {
       stream.write(`${JSON.stringify(event)}\n`);
     }
+  } catch (error) {
+    const skipReason = codexLiveSkipReason(error);
+    if (skipReason) {
+      t.skip(skipReason);
+      return;
+    }
+    throw error;
   } finally {
     await new Promise<void>(resolve => stream.end(resolve));
   }
@@ -96,6 +104,7 @@ test('codex streams a sin/cos calculator', async () => {
     (window.document.querySelector('.compute-btn') as HTMLButtonElement | null) ||
     (window.document.querySelector('.compute-button') as HTMLButtonElement | null);
   const angleDegrees = window.document.getElementById('angleDegrees') as HTMLInputElement | null;
+  const angleRadians = window.document.getElementById('angleRadians') as HTMLInputElement | null;
 
   if (!sinSpan || !cosSpan || !button || !angleDegrees) {
     assert.ok(/sin/i.test(html) && /cos/i.test(html), 'Calculator markup should mention sin/cos outputs.');
@@ -103,10 +112,13 @@ test('codex streams a sin/cos calculator', async () => {
   }
 
   angleDegrees.value = '60';
+  if (angleRadians) {
+    angleRadians.value = '';
+  }
   if (typeof window.updateTrigValues === 'function') {
     void window.updateTrigValues();
   }
-  button.dispatchEvent(new window.Event('click'));
+  button.dispatchEvent(new window.Event('click', { bubbles: true, cancelable: true }));
 
   const sinValue = sinSpan.textContent?.toLowerCase() ?? '';
   const cosValue = cosSpan.textContent?.toLowerCase() ?? '';

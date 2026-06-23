@@ -1,14 +1,14 @@
 {
   "name": "@headless-coder-sdk/examples-tests",
   "private": true,
-  "version": "0.25.0",
+  "version": "0.27.0",
   "type": "module",
   "main": "src/codex-web-calculator.test.ts",
   "files": [
     "src"
   ],
   "scripts": {
-    "test": "npm exec -- tsx --test \"src/**/*.test.ts\""
+    "test": "npm exec -- tsx --test --test-concurrency=1 \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@headless-coder-sdk/core": "file:../packages/core",

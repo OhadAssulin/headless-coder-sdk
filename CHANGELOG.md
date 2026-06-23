@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.27.0] - 2026-06-23
+### SDK Compatibility
+- Updated Codex adapter support to `@openai/codex-sdk@^0.142.0`.
+- Updated Claude adapter support to `@anthropic-ai/claude-agent-sdk@^0.3.186` and added the required Zod 4 peer.
+- Confirmed `@google/gemini-cli@0.47.0` is the current stable Gemini CLI release; the Gemini adapter remains CLI-based and now exposes provider passthrough args for new CLI flags.
+
+### Workspace
+- Removed the legacy protocol server workspace and its root E2E script so the monorepo now only contains direct provider adapters and examples.
+
+### OpenCode
+- Added an OpenCode adapter plan covering current `@opencode-ai/sdk@1.17.9` and `opencode-ai@1.17.9` integration options, with the direct server SDK path recommended over a protocol bridge.
+
+### Codex Adapter
+- Default Codex model is now `gpt-5.5`.
+- Added first-class `StartOpts` support for current Codex thread options: `modelReasoningEffort`, `approvalPolicy`, `networkAccessEnabled`, `webSearchMode`, `webSearchEnabled`, and `additionalDirectories`.
+- Added Codex client options for `baseUrl`, `apiKey`, `config`, and isolated `env` passthrough.
+- Added local image content blocks to `PromptInput` and forwards them to Codex as native `local_image` entries.
+- Expanded stream normalization for current Codex event items: command executions, file changes, MCP tool calls, web searches, todo lists, and top-level errors.
+
+### Claude Adapter
+- Added passthrough support for current Claude Agent SDK options including subagents, tools, aliases, checkpointing, betas, hooks, thinking/effort, budgets, plugins, skills, sandbox, settings, prompt suggestions, progress summaries, and custom executable/runtime options.
+- Custom tool conversion now emits Zod raw shapes as required by Claude Agent SDK 0.3.x while preserving the existing headless-coder-sdk schema helper format.
+- `permissionMode: 'bypassPermissions'` now sets Claude Agent SDK's required `allowDangerouslySkipPermissions` acknowledgement automatically unless explicitly overridden.
+
+### Testing
+- Added Codex stream-normalization unit tests for the new SDK event model.
+- Live Codex example tests now skip with a clear message when the local account does not support the selected Codex model.
+
 ## [0.26.0] - 2025-12-13
 ### ✨ Custom Tools Support
 - Added comprehensive custom tools infrastructure following Claude Agent SDK patterns.
@@ -84,7 +112,7 @@
 
 ## [0.16.0] - 2025-11-10
 ### ✨ Gemini Tool Mapping
-- Gemini adapter now emits richer `tool_use`/`tool_result` frames (name/callId/args/output/exitCode/error) so downstream ACP clients and SDK consumers can rely on structured metadata without inspecting `originalItem`.
+- Gemini adapter now emits richer `tool_use`/`tool_result` frames (name/callId/args/output/exitCode/error) so downstream clients and SDK consumers can rely on structured metadata without inspecting `originalItem`.
 
 ### 📚 Documentation
 - Updated the repo and core README multi-provider sections to use the canonical `registerAdapter` + `createCoder` flow, keeping the examples accurate for all environments.

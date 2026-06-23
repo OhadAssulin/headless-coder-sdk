@@ -18,11 +18,25 @@ export type AdapterName = Provider;
 export type CoderType = Provider;
 
 /**
+ * Chat-style message input accepted by every adapter.
+ */
+export interface PromptMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+/**
+ * Provider-native content blocks. Codex currently accepts local image
+ * attachments directly; text-only providers flatten these blocks to text.
+ */
+export type PromptContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'local_image'; path: string };
+
+/**
  * Input accepted by coders when executing a run.
  */
-export type PromptInput =
-  | string
-  | Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+export type PromptInput = string | PromptMessage[] | PromptContentPart[];
 
 /**
  * Tool result content format following MCP protocol.
@@ -83,6 +97,23 @@ export interface MCPServer {
   [key: string]: any;
 }
 
+export type ModelReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+export type AgentEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+export type ApprovalPolicy = 'never' | 'on-request' | 'on-failure' | 'untrusted';
+export type WebSearchMode = 'disabled' | 'cached' | 'live';
+
+/**
+ * Provider-specific passthrough options. Adapters merge these into their native
+ * SDK options after applying the normalized fields exposed below.
+ */
+export interface ProviderOptions {
+  codex?: Record<string, any>;
+  codexClient?: Record<string, any>;
+  claude?: Record<string, any>;
+  gemini?: Record<string, any>;
+  [provider: string]: Record<string, any> | undefined;
+}
+
 /**
  * Options for starting or resuming a thread across providers.
  */
@@ -92,19 +123,38 @@ export interface StartOpts {
   sandboxMode?: 'read-only' | 'workspace-write' | 'danger-full-access';
   skipGitRepoCheck?: boolean;
   codexExecutablePath?: string;
+  codexBaseUrl?: string;
+  codexApiKey?: string;
+  codexConfig?: Record<string, any>;
+  codexEnv?: Record<string, string>;
+  codexClientOptions?: Record<string, any>;
+  providerOptions?: ProviderOptions;
+  modelReasoningEffort?: ModelReasoningEffort;
+  networkAccessEnabled?: boolean;
+  webSearchMode?: WebSearchMode;
+  webSearchEnabled?: boolean;
+  approvalPolicy?: ApprovalPolicy;
+  additionalDirectories?: string[];
   /**
    * Array of allowed tool names. Tool names follow the pattern:
    * - Built-in tools: tool name directly (e.g., "bash", "read")
    * - MCP tools: mcp__{server_name}__{tool_name} (e.g., "mcp__my-server__get_weather")
    */
   allowedTools?: string[];
+  disallowedTools?: string[];
+  tools?: string[] | { type: 'preset'; preset: string };
+  toolAliases?: Record<string, string>;
+  canUseTool?: unknown;
   /**
    * MCP servers providing custom tools.
    * Key is the server name, value is the server definition or provider-specific server object.
    */
   mcpServers?: Record<string, MCPServer | unknown>;
+  agent?: string;
+  agents?: Record<string, any>;
   continue?: boolean;
   resume?: string;
+  resumeSessionAt?: string;
   forkSession?: boolean;
   geminiBinaryPath?: string;
   includeDirectories?: string[];
@@ -112,6 +162,43 @@ export interface StartOpts {
   permissionMode?: string;
   permissionPromptToolName?: string;
   settingSources?: Array<'local' | 'project' | 'user'>;
+  fallbackModel?: string;
+  enableFileCheckpointing?: boolean;
+  betas?: string[];
+  hooks?: unknown;
+  includeHookEvents?: boolean;
+  forwardSubagentText?: boolean;
+  thinking?: unknown;
+  effort?: AgentEffort | number;
+  maxThinkingTokens?: number;
+  maxTurns?: number;
+  maxBudgetUsd?: number;
+  taskBudget?: { total: number };
+  pathToClaudeCodeExecutable?: string;
+  planModeInstructions?: string;
+  allowDangerouslySkipPermissions?: boolean;
+  plugins?: unknown[];
+  promptSuggestions?: boolean;
+  agentProgressSummaries?: boolean;
+  persistSession?: boolean;
+  sandbox?: unknown;
+  settings?: string | Record<string, any>;
+  managedSettings?: Record<string, any>;
+  skills?: string[] | 'all';
+  debug?: boolean;
+  debugFile?: string;
+  stderr?: (data: string) => void;
+  strictMcpConfig?: boolean;
+  systemPrompt?:
+    | string
+    | string[]
+    | { type: 'preset'; preset: string; append?: string; excludeDynamicSections?: boolean };
+  title?: string;
+  toolConfig?: unknown;
+  env?: Record<string, string | undefined>;
+  executable?: 'bun' | 'deno' | 'node';
+  executableArgs?: string[];
+  extraArgs?: Record<string, string | null>;
 }
 
 /**

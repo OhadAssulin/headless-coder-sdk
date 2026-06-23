@@ -1,6 +1,6 @@
 {
   "name": "@headless-coder-sdk/core",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "description": "Unified SDK for headless AI coders (Codex, Claude, Gemini) with standardized threading, streaming, and sandboxing.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -43,7 +43,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "typescript": "^5.9.2"
   },
   "keywords": [
     "ai",

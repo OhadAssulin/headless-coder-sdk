@@ -28,6 +28,8 @@ It standardizes threads, streaming, structured outputs, permissions, and sandbox
 - `@headless-coder-sdk/gemini-adapter` – Invokes the Gemini CLI (headless mode)  
 - `@headless-coder-sdk/examples` – Example scripts demonstrating runtime wiring  
 
+OpenCode support is being designed as a direct adapter package. See [docs/opencode-adapter-plan.md](https://github.com/OhadAssulin/headless-coder-sdk/blob/main/docs/opencode-adapter-plan.md) for the current implementation plan.
+
 ---
 
 ## 🧭 Quickstart
@@ -53,7 +55,7 @@ console.log(result.text);
 import { registerAdapter, createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CODEX_CODER, createAdapter as createCodexAdapter } from '@headless-coder-sdk/codex-adapter';
 
-registerAdapter(CODEX_CODER, createCodexAdapter);
+registerAdapter(createCodexAdapter);
 
 const coder = createCoder(CODEX_CODER, { workingDirectory: process.cwd() });
 const thread = await coder.startThread();
@@ -122,7 +124,7 @@ Gemini sessions are resumable—reuse the same thread handle for follow-up runs 
 import { registerAdapter, createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CODEX_CODER, createAdapter as createCodexAdapter } from '@headless-coder-sdk/codex-adapter';
 
-registerAdapter(CODEX_CODER, createCodexAdapter);
+registerAdapter(createCodexAdapter);
 
 const codex = createCoder(CODEX_CODER, {
   workingDirectory: process.cwd(),
@@ -130,7 +132,7 @@ const codex = createCoder(CODEX_CODER, {
   skipGitRepoCheck: true,
 });
 
-const session = await codex.startThread({ model: 'gpt-5-codex' });
+const session = await codex.startThread({ model: 'gpt-5.5' });
 await session.run('Draft a CLI plan.');
 
 const resumed = await codex.resumeThread(session.id!);
@@ -160,9 +162,9 @@ import {
   createAdapter as createGeminiAdapter,
 } from '@headless-coder-sdk/gemini-adapter';
 
-registerAdapter(CODEX_CODER, createCodexAdapter);
-registerAdapter(CLAUDE_CODER, createClaudeAdapter);
-registerAdapter(GEMINI_CODER, createGeminiAdapter);
+registerAdapter(createCodexAdapter);
+registerAdapter(createClaudeAdapter);
+registerAdapter(createGeminiAdapter);
 
 const codex = createCoder(CODEX_CODER);
 const claude = createCoder(CLAUDE_CODER);
@@ -301,7 +303,7 @@ See `examples/src/claude-custom-tools.test.ts` for comprehensive examples includ
 
 ## ⚠️ Codex Adapter Runtime
 
-- The Codex adapter talks directly to the Codex CLI through Node APIs and **must run on the server**. It is safe to import in build tooling, but gate runtime usage to environments where `process.versions.node` exists.
+- The Codex adapter talks directly to the OpenAI Codex SDK and **must run on the server**. It is safe to import in build tooling, but gate runtime usage to environments where `process.versions.node` exists.
 - A convenience helper, `createHeadlessCodex`, registers the adapter and returns a coder in one call:
 
   ```ts
@@ -350,7 +352,7 @@ pnpm test
 
 **Run examples**
 ```bash
-pnpm run examples
+pnpm --filter @headless-coder-sdk/examples-tests test
 ```
 
 ---

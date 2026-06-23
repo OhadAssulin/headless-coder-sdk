@@ -16,6 +16,7 @@ import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CODEX_CODER_NAME } from '@headless-coder-sdk/codex-adapter';
 import type { PromptInput } from '@headless-coder-sdk/core/types';
 import { ensureAdaptersRegistered } from './register-adapters';
+import { codexLiveSkipReason } from './codex-test-utils';
 
 const TARGET_DIR = '/tmp/headless-coder-sdk/test';
 
@@ -115,6 +116,11 @@ async function runCalculatorScenario(t: TestContext): Promise<void> {
   try {
     await thread.run(prompt);
   } catch (error) {
+    const skipReason = codexLiveSkipReason(error);
+    if (skipReason) {
+      t.skip(skipReason);
+      return;
+    }
     throw new Error(
       'Codex failed to generate the calculator. Ensure the codex executable is available and licensed.',
       { cause: error instanceof Error ? error : undefined },

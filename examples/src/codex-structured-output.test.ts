@@ -4,6 +4,7 @@ import process from 'node:process';
 import { createCoder } from '@headless-coder-sdk/core/factory';
 import { CODER_NAME as CODEX_CODER_NAME } from '@headless-coder-sdk/codex-adapter';
 import { ensureAdaptersRegistered } from './register-adapters';
+import { codexLiveSkipReason } from './codex-test-utils';
 
 const WORKSPACE = process.env.CODEX_STRUCTURED_WORKSPACE ?? process.cwd();
 
@@ -23,7 +24,7 @@ const SCHEMA = {
 
 ensureAdaptersRegistered();
 
-test('codex returns structured summary output', async () => {
+test('codex returns structured summary output', async t => {
   const coder = createCoder(CODEX_CODER_NAME, {
     workingDirectory: WORKSPACE,
     sandboxMode: 'workspace-write',
@@ -31,10 +32,20 @@ test('codex returns structured summary output', async () => {
   });
 
   const thread = await coder.startThread();
-  const result = await thread.run(
-    'Summarise the purpose of this repository and list two components.',
-    { outputSchema: SCHEMA },
-  );
+  let result;
+  try {
+    result = await thread.run(
+      'Summarise the purpose of this repository and list two components.',
+      { outputSchema: SCHEMA },
+    );
+  } catch (error) {
+    const skipReason = codexLiveSkipReason(error);
+    if (skipReason) {
+      t.skip(skipReason);
+      return;
+    }
+    throw error;
+  }
 
   assert.ok(result.json, 'Structured output should be parsed into json.');
   const structured = result.json as { summary: string; keyPoints: string[] };

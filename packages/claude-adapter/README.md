@@ -5,7 +5,7 @@ Anthropic Claude adapter for the Headless Coder SDK. It wraps `@anthropic-ai/cla
 ## Installation
 
 ```bash
-npm install @headless-coder-sdk/core @headless-coder-sdk/claude-adapter @anthropic-ai/claude-agent-sdk
+npm install @headless-coder-sdk/core @headless-coder-sdk/claude-adapter @anthropic-ai/claude-agent-sdk zod
 ```
 
 ## Usage
@@ -23,3 +23,9 @@ console.log(result.text);
 `createHeadlessClaude` registers the adapter (if needed) and returns a coder so you can skip the manual `registerAdapter` boilerplate.
 
 > Heads up: the Anthropic SDK requires Node 18+. Make sure the `CLAUDE_API_KEY` environment variable is available before running the adapter.
+
+## Current SDK Support
+
+- Targets `@anthropic-ai/claude-agent-sdk@^0.3.186`.
+- Requires Zod 4 because Claude Agent SDK 0.3.x uses Zod raw shapes for in-process SDK tools.
+- Supports current Agent SDK options through `StartOpts` and `providerOptions.claude`, including subagents, skills, plugins, thinking/effort, checkpointing, sandbox/settings controls, prompt suggestions, and progress summaries.

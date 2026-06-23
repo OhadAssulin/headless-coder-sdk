@@ -22,6 +22,8 @@ import type {
   CoderStreamEvent,
   EventIterator,
   Provider,
+  PromptContentPart,
+  PromptMessage,
 } from '@headless-coder-sdk/core';
 
 export const CODER_NAME: Provider = 'gemini';
@@ -95,7 +97,16 @@ function geminiPath(override?: string): string {
  */
 function toPrompt(input: PromptInput): string {
   if (typeof input === 'string') return input;
+  if (isContentPartInput(input)) {
+    return input
+      .map(part => (part.type === 'text' ? part.text : `[local image: ${part.path}]`))
+      .join('\n');
+  }
   return input.map(message => `${message.role}: ${message.content}`).join('\n');
+}
+
+function isContentPartInput(input: PromptMessage[] | PromptContentPart[]): input is PromptContentPart[] {
+  return input.every(part => part && typeof part === 'object' && 'type' in part);
 }
 
 function applyOutputSchemaPrompt(input: PromptInput, schema?: object): string {
@@ -105,7 +116,7 @@ function applyOutputSchemaPrompt(input: PromptInput, schema?: object): string {
   if (typeof input === 'string') {
     return `${input}\n\n${instruction}`;
   }
-  return toPrompt([{ role: 'system', content: instruction }, ...input]);
+  return `${toPrompt(input)}\n\n${instruction}`;
 }
 
 function extractJsonPayload(text: string | undefined): unknown | undefined {
@@ -670,7 +681,7 @@ function buildGeminiArgs(
   format: 'json' | 'stream-json',
   resumeTarget?: string,
 ): string[] {
-  const args = ['--output-format', format, '--prompt', prompt];
+  const args = ['--output-format', format];
   if (opts.model) args.push('--model', opts.model);
   if (opts.includeDirectories?.length) {
     args.push('--include-directories', opts.includeDirectories.join(','));
@@ -678,6 +689,16 @@ function buildGeminiArgs(
   if (opts.yolo) args.push('--yolo');
   if (resumeTarget) {
     args.push('--resume', resumeTarget);
+    args.push('--prompt', prompt);
+  }
+  const extraArgs = (opts.providerOptions?.gemini?.args ?? opts.providerOptions?.gemini?.extraArgs) as
+    | string[]
+    | undefined;
+  if (extraArgs?.length) {
+    args.push(...extraArgs);
+  }
+  if (!resumeTarget) {
+    args.push(prompt);
   }
   return args;
 }

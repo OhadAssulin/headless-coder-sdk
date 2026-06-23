@@ -27,6 +27,8 @@ import type {
   CoderStreamEvent,
   EventIterator,
   Provider,
+  PromptContentPart,
+  PromptMessage,
 } from '@headless-coder-sdk/core';
 import { convertMCPServers } from './tools.js';
 
@@ -94,7 +96,35 @@ function extractNativeStructuredOutput(result: any): unknown | undefined {
  */
 function toPrompt(input: PromptInput): string {
   if (typeof input === 'string') return input;
+  if (isContentPartInput(input)) {
+    return input
+      .map(part => (part.type === 'text' ? part.text : `[local image: ${part.path}]`))
+      .join('\n');
+  }
   return input.map(message => `${message.role}: ${message.content}`).join('\n');
+}
+
+function isContentPartInput(input: PromptMessage[] | PromptContentPart[]): input is PromptContentPart[] {
+  return input.every(part => part && typeof part === 'object' && 'type' in part);
+}
+
+function buildClaudeEnv(startOpts: StartOpts, runOpts?: RunOpts): Options['env'] | undefined {
+  if (startOpts.env) {
+    return { ...startOpts.env, ...(runOpts?.extraEnv ?? {}) };
+  }
+  if (runOpts?.extraEnv) {
+    return { ...process.env, ...runOpts.extraEnv };
+  }
+  return undefined;
+}
+
+function pruneUndefined<T extends Record<string, any>>(value: T): T {
+  for (const key of Object.keys(value)) {
+    if (value[key] === undefined) {
+      delete value[key];
+    }
+  }
+  return value;
 }
 
 /**
@@ -168,6 +198,8 @@ export class ClaudeAdapter implements HeadlessCoder {
     const settingSources = startOpts.settingSources ?? ['local', 'project', 'user'];
     const permissionMode: PermissionMode | undefined =
       (startOpts.permissionMode as PermissionMode | undefined) ?? (startOpts.yolo ? 'bypassPermissions' : undefined);
+    const providerOptions = (startOpts.providerOptions?.claude ?? {}) as Partial<Options>;
+    const env = buildClaudeEnv(startOpts, runOpts);
     const outputFormat =
       useNativeStructuredOutput && runOpts?.outputSchema
         ? {
@@ -175,20 +207,66 @@ export class ClaudeAdapter implements HeadlessCoder {
             schema: runOpts.outputSchema as Record<string, unknown>,
           }
         : undefined;
-    return {
+    return pruneUndefined({
+      ...providerOptions,
+      additionalDirectories: startOpts.additionalDirectories,
+      agent: startOpts.agent,
+      agents: startOpts.agents as Options['agents'],
       cwd: startOpts.workingDirectory,
       allowedTools: startOpts.allowedTools,
+      canUseTool: startOpts.canUseTool as Options['canUseTool'],
+      disallowedTools: startOpts.disallowedTools,
+      tools: startOpts.tools as Options['tools'],
+      toolAliases: startOpts.toolAliases,
+      env,
+      executable: startOpts.executable,
+      executableArgs: startOpts.executableArgs,
+      extraArgs: startOpts.extraArgs,
+      fallbackModel: startOpts.fallbackModel,
+      enableFileCheckpointing: startOpts.enableFileCheckpointing,
+      betas: startOpts.betas as Options['betas'],
+      hooks: startOpts.hooks as Options['hooks'],
       mcpServers: convertMCPServers(startOpts.mcpServers) as any,
       continue: !!startOpts.continue,
       resume: resumeId,
+      resumeSessionAt: startOpts.resumeSessionAt,
       forkSession: startOpts.forkSession,
+      includeHookEvents: startOpts.includeHookEvents,
       includePartialMessages: !!runOpts?.streamPartialMessages,
+      forwardSubagentText: startOpts.forwardSubagentText,
+      thinking: startOpts.thinking as Options['thinking'],
+      effort: startOpts.effort as Options['effort'],
+      maxThinkingTokens: startOpts.maxThinkingTokens,
+      maxTurns: startOpts.maxTurns,
+      maxBudgetUsd: startOpts.maxBudgetUsd,
+      taskBudget: startOpts.taskBudget,
       model: startOpts.model,
       permissionMode,
+      allowDangerouslySkipPermissions:
+        startOpts.allowDangerouslySkipPermissions ??
+        providerOptions.allowDangerouslySkipPermissions ??
+        (permissionMode === 'bypassPermissions' ? true : undefined),
       permissionPromptToolName: startOpts.permissionPromptToolName,
+      pathToClaudeCodeExecutable: startOpts.pathToClaudeCodeExecutable,
+      planModeInstructions: startOpts.planModeInstructions,
       outputFormat,
+      plugins: startOpts.plugins as Options['plugins'],
+      promptSuggestions: startOpts.promptSuggestions,
+      agentProgressSummaries: startOpts.agentProgressSummaries,
+      persistSession: startOpts.persistSession,
+      sandbox: startOpts.sandbox as Options['sandbox'],
+      settings: startOpts.settings as Options['settings'],
+      managedSettings: startOpts.managedSettings as Options['managedSettings'],
       settingSources,
-    };
+      skills: startOpts.skills,
+      debug: startOpts.debug,
+      debugFile: startOpts.debugFile,
+      stderr: startOpts.stderr,
+      strictMcpConfig: startOpts.strictMcpConfig,
+      systemPrompt: startOpts.systemPrompt as Options['systemPrompt'],
+      title: startOpts.title,
+      toolConfig: startOpts.toolConfig as Options['toolConfig'],
+    });
   }
 
   /**
@@ -424,8 +502,60 @@ function normalizeClaudeStreamMessage(message: any, threadId?: string): CoderStr
           ...message.event,
           session_id: message.session_id ?? message.event?.session_id,
           model: message.model ?? message.event?.model,
-        }
+      }
       : message;
+
+  if (base?.type === 'prompt_suggestion') {
+    return [
+      {
+        type: 'progress',
+        provider,
+        label: 'prompt_suggestion',
+        detail: base.suggestion,
+        ts,
+        originalItem: message,
+      },
+    ];
+  }
+
+  if (base?.type === 'rate_limit_event') {
+    return [
+      {
+        type: 'progress',
+        provider,
+        label: 'rate_limit_event',
+        detail: base.rate_limit_info?.status,
+        ts,
+        originalItem: message,
+      },
+    ];
+  }
+
+  if (base?.type === 'system' && base?.subtype === 'permission_denied') {
+    return [
+      {
+        type: 'permission',
+        provider,
+        request: { toolName: base.tool_name, toolUseId: base.tool_use_id },
+        decision: 'denied',
+        ts,
+        originalItem: message,
+      },
+    ];
+  }
+
+  if (typeof base?.type === 'string' && base.type.startsWith('task_')) {
+    return [
+      {
+        type: 'progress',
+        provider,
+        label: base.type,
+        detail: base.summary ?? base.description ?? base.status,
+        ts,
+        originalItem: message,
+      },
+    ];
+  }
 
   if (base?.type === 'content_block_delta' && base?.delta?.type === 'text_delta') {
     return [
