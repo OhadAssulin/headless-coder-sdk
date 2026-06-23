@@ -3,7 +3,7 @@
  * delegating directly to the Codex SDK with AbortSignal-based cancellation.
  */
 
-import type { Thread, TurnOptions } from '@openai/codex-sdk';
+import type { CodexOptions, Input, Thread, ThreadOptions, TurnOptions } from '@openai/codex-sdk';
 import {
   now,
   registerAdapter,
@@ -21,6 +21,8 @@ import type {
   CoderStreamEvent,
   EventIterator,
   Provider,
+  PromptContentPart,
+  PromptMessage,
 } from '@headless-coder-sdk/core';
 
 const isNodeRuntime = typeof process !== 'undefined' && !!process.versions?.node;
@@ -49,7 +51,7 @@ function ensureNodeRuntime(action: string): void {
 }
 
 export const CODER_NAME: Provider = 'codex';
-export const DEFAULT_MODEL = 'gpt-5.2';
+export const DEFAULT_MODEL = 'gpt-5.5';
 
 export function createAdapter(defaults?: StartOpts): HeadlessCoder {
   return new CodexAdapter(defaults);
@@ -64,17 +66,10 @@ export function createHeadlessCodex(defaults?: StartOpts): HeadlessCoder {
   return createCoder(CODER_NAME, defaults);
 }
 
-interface CodexThreadOptions {
-  model?: string;
-  sandboxMode?: 'read-only' | 'workspace-write' | 'danger-full-access';
-  workingDirectory?: string;
-  skipGitRepoCheck?: boolean;
-}
-
 interface CodexThreadState {
   id?: string;
-  options: CodexThreadOptions;
-  codexExecutablePath?: string;
+  options: ThreadOptions;
+  clientOptions?: CodexOptions;
   currentRun?: ActiveRun | null;
 }
 
@@ -101,7 +96,7 @@ export class CodexAdapter implements HeadlessCoder {
     const merged = this.mergeStartOpts(opts);
     const state: CodexThreadState = {
       options: this.extractThreadOptions(merged),
-      codexExecutablePath: merged.codexExecutablePath,
+      clientOptions: this.extractClientOptions(merged),
     };
     return this.createThreadHandle(state);
   }
@@ -111,7 +106,7 @@ export class CodexAdapter implements HeadlessCoder {
     const state: CodexThreadState = {
       id: threadId,
       options: this.extractThreadOptions(merged),
-      codexExecutablePath: merged.codexExecutablePath,
+      clientOptions: this.extractClientOptions(merged),
     };
     return this.createThreadHandle(state);
   }
@@ -120,7 +115,7 @@ export class CodexAdapter implements HeadlessCoder {
     ensureNodeRuntime('call Codex');
     const state = handle.internal as CodexThreadState;
     this.assertIdle(state);
-    const normalizedInput = normalizeInput(input);
+    const normalizedInput = normalizeCodexInput(input);
     const abortController = new AbortController();
     const stopExternal = linkSignal(opts?.signal, reason => {
       this.abortCurrentRun(state, reason ?? 'Interrupted');
@@ -165,7 +160,7 @@ export class CodexAdapter implements HeadlessCoder {
     ensureNodeRuntime('stream Codex events');
     const state = handle.internal as CodexThreadState;
     this.assertIdle(state);
-    const normalizedInput = normalizeInput(input);
+    const normalizedInput = normalizeCodexInput(input);
     const abortController = new AbortController();
     const stopExternal = linkSignal(opts?.signal, reason => {
       this.abortCurrentRun(state, reason ?? 'Interrupted');
@@ -250,20 +245,38 @@ export class CodexAdapter implements HeadlessCoder {
     return { ...this.defaultOpts, ...opts };
   }
 
-  private extractThreadOptions(opts: StartOpts): CodexThreadOptions {
-    return {
-      model: opts.model ?? DEFAULT_MODEL,
-      sandboxMode: opts.sandboxMode,
-      workingDirectory: opts.workingDirectory,
-      skipGitRepoCheck: opts.skipGitRepoCheck,
+  private extractThreadOptions(opts: StartOpts): ThreadOptions {
+    const providerOptions = (opts.providerOptions?.codex ?? {}) as ThreadOptions;
+    const options: ThreadOptions = { ...providerOptions };
+    setIfDefined(options, 'model', opts.model ?? DEFAULT_MODEL);
+    setIfDefined(options, 'sandboxMode', opts.sandboxMode);
+    setIfDefined(options, 'workingDirectory', opts.workingDirectory);
+    setIfDefined(options, 'skipGitRepoCheck', opts.skipGitRepoCheck);
+    setIfDefined(options, 'modelReasoningEffort', opts.modelReasoningEffort);
+    setIfDefined(options, 'networkAccessEnabled', opts.networkAccessEnabled);
+    setIfDefined(options, 'webSearchMode', opts.webSearchMode);
+    setIfDefined(options, 'webSearchEnabled', opts.webSearchEnabled);
+    setIfDefined(options, 'approvalPolicy', opts.approvalPolicy);
+    setIfDefined(options, 'additionalDirectories', opts.additionalDirectories);
+    return options;
+  }
+
+  private extractClientOptions(opts: StartOpts): CodexOptions | undefined {
+    const options: CodexOptions = {
+      ...((opts.providerOptions?.codexClient ?? {}) as CodexOptions),
+      ...((opts.codexClientOptions ?? {}) as CodexOptions),
     };
+    setIfDefined(options, 'codexPathOverride', opts.codexExecutablePath);
+    setIfDefined(options, 'baseUrl', opts.codexBaseUrl);
+    setIfDefined(options, 'apiKey', opts.codexApiKey);
+    setIfDefined(options, 'config', opts.codexConfig as CodexOptions['config']);
+    setIfDefined(options, 'env', opts.codexEnv);
+    return Object.keys(options).length ? options : undefined;
   }
 
   private async createThread(state: CodexThreadState): Promise<Thread> {
     const { Codex } = await loadCodexModule();
-    const codex = new Codex(
-      state.codexExecutablePath ? { codexPathOverride: state.codexExecutablePath } : undefined,
-    );
+    const codex = new Codex(state.clientOptions);
     return state.id ? codex.resumeThread(state.id, state.options) : codex.startThread(state.options);
   }
 
@@ -297,14 +310,27 @@ export class CodexAdapter implements HeadlessCoder {
   }
 }
 
-function normalizeInput(input: PromptInput): string {
+function normalizeCodexInput(input: PromptInput): Input {
   if (typeof input === 'string') return input;
-  return input.map(message => `${message.role.toUpperCase()}: ${message.content}`).join('\n');
+  if (isContentPartInput(input)) {
+    return input.map(part => ({ ...part }));
+  }
+  return input.map(message => ({ type: 'text', text: `${message.role.toUpperCase()}: ${message.content}` }));
+}
+
+function isContentPartInput(input: PromptMessage[] | PromptContentPart[]): input is PromptContentPart[] {
+  return input.every(part => part && typeof part === 'object' && 'type' in part);
+}
+
+function setIfDefined<T extends object, K extends keyof T>(target: T, key: K, value: T[K] | undefined): void {
+  if (value !== undefined) {
+    target[key] = value;
+  }
 }
 
 async function collectRunSummary(
   thread: Thread,
-  input: string,
+  input: Input,
   options: RunTurnOptions,
 ): Promise<CodexRunSummary> {
   const run = await thread.runStreamed(input, options);
@@ -398,6 +424,17 @@ function normalizeCodexEvent(event: any): CoderStreamEvent[] {
     return normalized;
   }
 
+  if (type === 'error') {
+    normalized.push({
+      type: 'error',
+      provider,
+      message: ev.message ?? 'codex error',
+      ts,
+      originalItem: ev,
+    });
+    return normalized;
+  }
+
   if (typeof type === 'string' && type.startsWith('permission.')) {
     const decision = type.endsWith('granted') ? 'granted' : type.endsWith('denied') ? 'denied' : undefined;
     normalized.push({
@@ -437,28 +474,8 @@ function normalizeCodexEvent(event: any): CoderStreamEvent[] {
     return normalized;
   }
 
-  if (type === 'item.completed') {
-    const item = ev.item ?? {};
-    if (item.type === 'agent_message') {
-      normalized.push({
-        type: 'message',
-        provider,
-        role: 'assistant',
-        text: item.text,
-        ts,
-        originalItem: ev,
-      });
-      return normalized;
-    }
-
-    normalized.push({
-      type: 'progress',
-      provider,
-      label: `item.completed:${item.type ?? 'event'}`,
-      ts,
-      originalItem: ev,
-    });
-    return normalized;
+  if (type === 'item.started' || type === 'item.updated' || type === 'item.completed') {
+    return normalizeCodexItemEvent(ev, type, ts, provider);
   }
 
   if (type === 'tool_use') {
@@ -522,6 +539,217 @@ function normalizeCodexEvent(event: any): CoderStreamEvent[] {
   return normalized;
 }
 
+function normalizeCodexItemEvent(
+  ev: any,
+  eventType: 'item.started' | 'item.updated' | 'item.completed',
+  ts: number,
+  provider: Provider,
+): CoderStreamEvent[] {
+  const item = ev.item ?? {};
+  const itemType = item.type;
+  const completed = eventType === 'item.completed';
+  const updated = eventType === 'item.updated';
+
+  if (itemType === 'agent_message') {
+    return [
+      {
+        type: 'message',
+        provider,
+        role: 'assistant',
+        text: item.text,
+        delta: completed ? undefined : true,
+        ts,
+        originalItem: ev,
+      },
+    ];
+  }
+
+  if (itemType === 'reasoning') {
+    return [
+      {
+        type: 'progress',
+        provider,
+        label: 'reasoning',
+        detail: item.text,
+        ts,
+        originalItem: ev,
+      },
+    ];
+  }
+
+  if (itemType === 'command_execution') {
+    if (completed) {
+      return [
+        {
+          type: 'tool_result',
+          provider,
+          name: 'command',
+          callId: item.id,
+          result: item.aggregated_output ?? item.text,
+          exitCode: item.exit_code ?? null,
+          error: item.status === 'failed' ? item.aggregated_output ?? item.text : undefined,
+          ts,
+          originalItem: ev,
+        },
+      ];
+    }
+    if (updated) {
+      return [
+        {
+          type: 'progress',
+          provider,
+          label: 'command_execution',
+          detail: item.aggregated_output,
+          ts,
+          originalItem: ev,
+        },
+      ];
+    }
+    return [
+      {
+        type: 'tool_use',
+        provider,
+        name: 'command',
+        callId: item.id,
+        args: { command: item.command },
+        ts,
+        originalItem: ev,
+      },
+    ];
+  }
+
+  if (itemType === 'mcp_tool_call') {
+    const name = [item.server, item.tool].filter(Boolean).join('.') || 'mcp_tool';
+    if (completed) {
+      return [
+        {
+          type: 'tool_result',
+          provider,
+          name,
+          callId: item.id,
+          result: item.result,
+          error: item.error,
+          ts,
+          originalItem: ev,
+        },
+      ];
+    }
+    return [
+      {
+        type: 'tool_use',
+        provider,
+        name,
+        callId: item.id,
+        args: item.arguments,
+        ts,
+        originalItem: ev,
+      },
+    ];
+  }
+
+  if (itemType === 'file_change') {
+    return normalizeCodexFileChange(ev, item, ts, provider);
+  }
+
+  if (itemType === 'todo_list') {
+    return [
+      {
+        type: 'plan_update',
+        provider,
+        text: formatCodexTodoList(item.items),
+        ts,
+        originalItem: ev,
+      },
+    ];
+  }
+
+  if (itemType === 'web_search') {
+    return [
+      {
+        type: 'progress',
+        provider,
+        label: 'web_search',
+        detail: item.query,
+        ts,
+        originalItem: ev,
+      },
+    ];
+  }
+
+  if (itemType === 'error') {
+    return [
+      {
+        type: 'error',
+        provider,
+        message: item.message ?? 'codex item error',
+        ts,
+        originalItem: ev,
+      },
+    ];
+  }
+
+  return [
+    {
+      type: 'progress',
+      provider,
+      label: itemType ?? eventType,
+      detail: item.text ?? item.message,
+      ts,
+      originalItem: ev,
+    },
+  ];
+}
+
+function normalizeCodexFileChange(
+  ev: any,
+  item: any,
+  ts: number,
+  provider: Provider,
+): CoderStreamEvent[] {
+  const changes = Array.isArray(item.changes) ? item.changes : undefined;
+  if (changes?.length) {
+    return changes.map((change: { path?: string; kind?: string }) => ({
+      type: 'file_change' as const,
+      provider,
+      path: change.path,
+      op: mapCodexPatchKind(change.kind),
+      patch: item.patch,
+      ts,
+      originalItem: ev,
+    }));
+  }
+  return [
+    {
+      type: 'file_change',
+      provider,
+      path: item.path,
+      op: item.op,
+      patch: item.patch,
+      ts,
+      originalItem: ev,
+    },
+  ];
+}
+
+function mapCodexPatchKind(kind: string | undefined): 'create' | 'modify' | 'delete' | undefined {
+  if (kind === 'add') return 'create';
+  if (kind === 'update') return 'modify';
+  if (kind === 'delete') return 'delete';
+  return undefined;
+}
+
+function formatCodexTodoList(items: unknown): string | undefined {
+  if (!Array.isArray(items)) return undefined;
+  return items
+    .map(item => {
+      const text = typeof item?.text === 'string' ? item.text : '';
+      if (!text) return '';
+      return `${item.completed ? '[x]' : '[ ]'} ${text}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
 function linkSignal(signal: AbortSignal | undefined, onAbort: (reason?: string) => void): () => void {
   if (!signal) return () => {};
   const handler = () => onAbort(reasonToString(signal.reason));
@@ -568,3 +796,8 @@ function createCancelledEvent(reason: string): CoderStreamEvent {
     originalItem: { reason },
   };
 }
+
+/**
+ * @internal Exported for testing stream event normalization only.
+ */
+export const __normalizeCodexEvent = normalizeCodexEvent;

@@ -28,3 +28,9 @@ console.log(result.text);
 `createHeadlessGemini` registers the adapter and returns a coder, so you can instantiate it inside server code without touching the registry manually.
 
 > Note: resume support depends on the Gemini CLI version—check the package README or upstream release notes for the latest status. The adapter shells out via Node’s `child_process`, so keep it on the server (Next.js API routes, background workers, etc.).
+
+## Current CLI Support
+
+- Verified against `@google/gemini-cli@0.47.0` as the current stable CLI.
+- Uses Gemini headless `--output-format json` and `--output-format stream-json`.
+- Accepts new CLI flags through `providerOptions.gemini.args` or `providerOptions.gemini.extraArgs`.

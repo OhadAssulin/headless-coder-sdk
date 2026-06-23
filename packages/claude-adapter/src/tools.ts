@@ -7,6 +7,7 @@ import {
   tool as claudeTool,
   createSdkMcpServer,
 } from '@anthropic-ai/claude-agent-sdk';
+import { z } from 'zod/v4';
 import type {
   ToolDefinition,
   MCPServer,
@@ -14,34 +15,122 @@ import type {
 } from '@headless-coder-sdk/core';
 
 /**
- * Converts a headless-coder-sdk ToolInputSchema to a Claude Agent SDK compatible schema.
+ * Converts a headless-coder-sdk ToolInputSchema to the Zod raw-shape format
+ * required by Claude Agent SDK 0.3.x.
  *
  * @param schema - Generic tool input schema
  * @returns Schema in Claude Agent SDK format (typically Zod-like or plain object)
  */
 function convertInputSchema(schema: ToolInputSchema): Record<string, any> {
-  // If it's already a JSON Schema object format, return as-is
   if (schema.type === 'object' && schema.properties) {
-    return schema;
+    return convertPropertiesToZodRawShape(schema.properties, schema.required);
   }
 
-  // Convert simple type mapping to object schema
-  const properties: Record<string, any> = {};
-  for (const [key, value] of Object.entries(schema)) {
-    if (typeof value === 'string') {
-      properties[key] = { type: value };
-    } else if (typeof value === 'function') {
-      // Handle constructor types like String, Number
-      properties[key] = { type: value.name.toLowerCase() };
-    } else {
-      properties[key] = value;
-    }
+  const required = Object.entries(schema)
+    .filter(([, value]) => !isOptionalSchemaProperty(value))
+    .map(([key]) => key);
+  return convertPropertiesToZodRawShape(schema, required);
+}
+
+function convertPropertiesToZodRawShape(
+  properties: Record<string, any>,
+  required?: string[],
+): Record<string, any> {
+  const shape: Record<string, any> = {};
+  const requiredSet = new Set(required ?? []);
+  const hasExplicitRequired = Array.isArray(required);
+
+  for (const [key, value] of Object.entries(properties)) {
+    const isRequired = hasExplicitRequired ? requiredSet.has(key) : !isOptionalSchemaProperty(value);
+    const zodSchema = schemaPropertyToZod(value);
+    shape[key] = isRequired ? zodSchema : zodSchema.optional();
   }
 
-  return {
-    type: 'object',
-    properties,
-  };
+  return shape;
+}
+
+function schemaPropertyToZod(value: any): any {
+  if (isZodSchema(value)) return value;
+
+  if (typeof value === 'string') {
+    return primitiveToZod(value);
+  }
+
+  if (typeof value === 'function') {
+    return constructorToZod(value);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return z.unknown();
+  }
+
+  if (Array.isArray(value.enum) && value.enum.length > 0) {
+    const literalSchemas = value.enum.map((entry: unknown) => z.literal(entry as never));
+    return applyDescription(
+      literalSchemas.length === 1 ? literalSchemas[0] : z.union(literalSchemas as [any, any, ...any[]]),
+      value.description,
+    );
+  }
+
+  const type = Array.isArray(value.type) ? value.type.find((entry: string) => entry !== 'null') : value.type;
+  const base =
+    type === 'object' && value.properties
+      ? z.object(convertPropertiesToZodRawShape(value.properties, value.required)).passthrough()
+      : type === 'array'
+        ? z.array(schemaPropertyToZod(value.items ?? {}))
+        : primitiveToZod(type);
+
+  return applyDescription(base, value.description);
+}
+
+function primitiveToZod(type: string | undefined): any {
+  switch (type) {
+    case 'string':
+      return z.string();
+    case 'number':
+      return z.number();
+    case 'integer':
+      return z.number().int();
+    case 'boolean':
+      return z.boolean();
+    case 'object':
+      return z.record(z.string(), z.unknown());
+    case 'array':
+      return z.array(z.unknown());
+    case 'null':
+      return z.null();
+    default:
+      return z.unknown();
+  }
+}
+
+function constructorToZod(value: Function): any {
+  switch (value) {
+    case String:
+      return z.string();
+    case Number:
+      return z.number();
+    case Boolean:
+      return z.boolean();
+    case Array:
+      return z.array(z.unknown());
+    case Object:
+      return z.record(z.string(), z.unknown());
+    default:
+      return z.unknown();
+  }
+}
+
+function applyDescription(schema: any, description: unknown): any {
+  return typeof description === 'string' ? schema.describe(description) : schema;
+}
+
+function isZodSchema(value: unknown): boolean {
+  return Boolean(value && typeof value === 'object' && typeof (value as any).safeParse === 'function');
+}
+
+function isOptionalSchemaProperty(value: unknown): boolean {
+  return Boolean(value && typeof value === 'object' && (value as any).optional === true);
 }
 
 /**
@@ -53,13 +142,13 @@ function convertInputSchema(schema: ToolInputSchema): Record<string, any> {
 export function convertToolToClaudeTool(toolDef: ToolDefinition): any {
   const schema = convertInputSchema(toolDef.inputSchema);
 
-  return claudeTool(
+  return (claudeTool as any)(
     toolDef.name,
     toolDef.description,
     schema,
-    async (args: any) => {
+    async (args: any): Promise<any> => {
       const result = await toolDef.handler(args);
-      return result;
+      return result as any;
     }
   );
 }

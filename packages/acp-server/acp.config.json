@@ -1,9 +1,0 @@
-{
-  "$schema": "./acp.config.schema.json",
-  "enabledAgents": ["codex", "claude", "gemini"],
-  "defaults": {
-    "workingDirectory": ".",
-    "model": null,
-    "sandboxMode": "read-only"
-  }
-}

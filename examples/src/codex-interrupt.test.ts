@@ -5,6 +5,7 @@ import { createCoder } from '@headless-coder-sdk/core/factory';
 import type { CoderStreamEvent } from '@headless-coder-sdk/core';
 import { CODER_NAME as CODEX_CODER } from '@headless-coder-sdk/codex-adapter';
 import { ensureAdaptersRegistered } from './register-adapters';
+import { codexLiveSkipReason } from './codex-test-utils';
 
 const WORKSPACE = process.env.CODEX_INTERRUPT_WORKSPACE ?? '/tmp/headless-coder-sdk/test_codex_interrupt';
 const CONNECT_FOUR_PROMPT =
@@ -44,6 +45,11 @@ test('codex run can be interrupted', async () => {
       if (event.type === 'error' && event.code === 'interrupted') break;
     }
   } catch (error) {
+    const skipReason = codexLiveSkipReason(error);
+    if (skipReason) {
+      t.skip(skipReason);
+      return;
+    }
     if (!(error instanceof Error) || (error as any).code !== 'interrupted') {
       throw error;
     }

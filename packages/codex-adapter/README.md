@@ -43,3 +43,10 @@ export async function POST() {
 ```
 
 The adapter is server-only because it shells out to the Codex executable and depends on the Node.js runtime.
+
+## Current SDK Support
+
+- Targets `@openai/codex-sdk@^0.142.0`.
+- Defaults to model `gpt-5.5` when `StartOpts.model` is omitted.
+- Supports current Codex thread controls including reasoning effort, approval policy, web search mode, network access, and additional directories.
+- Supports Codex local image inputs via `PromptInput` content parts: `{ type: 'local_image', path }`.

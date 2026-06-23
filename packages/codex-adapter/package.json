@@ -1,6 +1,6 @@
 {
   "name": "@headless-coder-sdk/codex-adapter",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -19,15 +19,16 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup --config tsup.config.ts"
+    "build": "tsup --config tsup.config.ts",
+    "test": "tsx --test test/*.test.ts"
   },
   "peerDependencies": {
-    "@headless-coder-sdk/core": "^0.26.0",
-    "@openai/codex-sdk": ">=0.60.0 <0.80.0"
+    "@headless-coder-sdk/core": "^0.27.0",
+    "@openai/codex-sdk": "^0.142.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
+    "typescript": "^5.9.2",
     "@headless-coder-sdk/core": "workspace:*",
-    "@openai/codex-sdk": ">=0.60.0 <0.80.0"
+    "@openai/codex-sdk": "^0.142.0"
   }
 }

@@ -38,23 +38,15 @@ pnpm smoke
 # Set HEADLESS_CODER_KEEP_SMOKE_TMP=1 to keep temp project for inspection
 ```
 
-**Run ACP server E2E tests:**
-```bash
-pnpm acp:e2e
-```
-
 **Work with specific packages:**
 ```bash
 # Build a single package
 pnpm --filter @headless-coder-sdk/core build
-
-# Run ACP server in dev mode
-pnpm --filter @headless-coder-sdk/acp-server dev
 ```
 
 **Run examples:**
 ```bash
-pnpm run examples
+pnpm --filter @headless-coder-sdk/examples-tests test
 ```
 
 ## Architecture
@@ -88,7 +80,6 @@ packages/
 ├── codex-adapter/     # OpenAI Codex SDK wrapper (server-only, Node.js)
 ├── claude-adapter/    # Anthropic Claude Agent SDK wrapper
 ├── gemini-adapter/    # Google Gemini CLI wrapper
-├── acp-server/        # Next.js ACP protocol server (REST + streaming)
 └── examples/          # Example scripts demonstrating runtime wiring
 ```
 
@@ -126,22 +117,8 @@ Each publishable package uses **tsup** for dual ESM/CJS builds:
 - **Unit tests:** Verify provider event mapping to `CoderStreamEvent`
 - **Integration tests:** Test `init → message → done` sequences
 - **Smoke tests:** Build, pack tarballs, install in throwaway project, exercise both ESM/CJS
-- **ACP E2E:** Test the ACP server's REST + streaming endpoints
 
 Test files use Node.js test runner (`tsx --test`) and are located in `test/*.test.ts` within adapter packages.
-
-## ACP Server (packages/acp-server)
-
-A Next.js application that exposes the Headless Coder SDK via the Agent Communication Protocol:
-- Dynamic provider config via `acp.config.json` (validated against schema)
-- NDJSON streaming for real-time responses
-- Optional Bearer token auth via `ACP_TOKEN` env var
-- Key routes:
-  - `GET /api/acp/agents` - List enabled agents
-  - `POST /api/acp/sessions` - Create thread
-  - `POST /api/acp/messages?stream=true` - Stream events as NDJSON
-
-Sessions are in-memory by default (add Redis/Postgres for persistence).
 
 ## Creating Custom Adapters
 

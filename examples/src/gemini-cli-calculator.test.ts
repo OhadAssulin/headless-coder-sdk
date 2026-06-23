@@ -6,7 +6,7 @@
 
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, rm, readFile } from 'node:fs/promises';
+import { mkdir, readdir, rm, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { JSDOM } from 'jsdom';
@@ -22,8 +22,34 @@ const GEMINI_TIMEOUT_MS = Number.parseInt(process.env.GEMINI_TEST_TIMEOUT_MS ?? 
  * Ensures the Gemini working directory exists in a clean state.
  */
 async function prepareWorkspace(dir: string): Promise<void> {
-  await rm(path.join(dir, 'index.html'), { force: true });
+  await rm(dir, { recursive: true, force: true });
   await mkdir(dir, { recursive: true });
+}
+
+async function readGeneratedHtml(dir: string): Promise<string> {
+  const indexPath = path.join(dir, 'index.html');
+  try {
+    return await readFile(indexPath, 'utf8');
+  } catch (error) {
+    if (!isMissingFile(error)) throw error;
+  }
+
+  const htmlFiles = (await readdir(dir)).filter(file => file.toLowerCase().endsWith('.html'));
+  assert.equal(
+    htmlFiles.length,
+    1,
+    `Expected index.html or exactly one generated HTML file, found: ${htmlFiles.join(', ') || 'none'}.`,
+  );
+  return readFile(path.join(dir, htmlFiles[0]!), 'utf8');
+}
+
+function isMissingFile(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'ENOENT'
+  );
 }
 
 /**
@@ -117,8 +143,7 @@ async function runGeminiScenario(t: TestContext): Promise<void> {
 
   assert.ok(result.text || result.raw, 'Gemini should return confirmation content.');
 
-  const htmlPath = path.join(GEMINI_WORKSPACE, 'index.html');
-  const html = await readFile(htmlPath, 'utf8');
+  const html = await readGeneratedHtml(GEMINI_WORKSPACE);
   assert.ok(html.includes('numberA'), 'Generated HTML should include the first input field.');
 
   const dom = new JSDOM(html, { runScripts: 'dangerously' });
@@ -137,6 +162,8 @@ async function runGeminiScenario(t: TestContext): Promise<void> {
   numberA.value = '7';
   numberB.value = '6';
   operator.value = '+';
+  const directResult = window.calculate(numberA.value, numberB.value, operator.value);
+  assert.equal(Number(directResult), 13, 'Direct invocation should support addition.');
   compute.click();
 
   const rawResult = resultSpan.textContent?.trim() ?? '';
